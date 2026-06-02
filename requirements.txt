@@ -21,3 +21,4 @@ redis
 ruff
 black
 isort
+cloudinary
