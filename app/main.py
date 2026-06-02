@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
@@ -43,6 +44,19 @@ if settings.FORCE_HTTPS:
 allowed_hosts = [host.strip() for host in settings.TRUSTED_HOSTS.split(",") if host.strip()]
 if allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+# Read origins from environment variable, falling back to localhost if not set
+raw_origins = getattr(settings, "CORS_ALLOWED_ORIGINS", "http://localhost:5173")
+origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+origins.extend(["http://localhost", "http://127.0.0.1"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 if os.path.isdir(frontend_assets_dir):
     app.mount("/assets", StaticFiles(directory=frontend_assets_dir), name="frontend_assets")
@@ -105,6 +119,7 @@ async def icons():
 async def react_app_catchall(request: Request, full_path: str):
     # List of API endpoints that should not be served as React routes
     api_prefixes = (
+        "api/",
         "auth/",
         "admin/",
         "quizzes/",

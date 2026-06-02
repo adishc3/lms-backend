@@ -45,5 +45,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW_SECONDS: int = 60
     REDIS_URL: str | None = None
 
+    # CORS - comma-separated list of allowed origins
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000"
+
 
 settings = Settings()
