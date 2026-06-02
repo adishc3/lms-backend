@@ -218,7 +218,7 @@ function showLogin() {
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-5">
         <div class="text-center mb-5">
-          <h1 class="display-5 fw-bold"><i class="bi bi-mortarboard-fill text-primary"></i> Beginner LMS</h1>
+          <h1 class="display-5 fw-bold"><i class="bi bi-mortarboard-fill text-primary"></i> Learn@will</h1>
           <p class="text-muted">Your learning journey starts here</p>
         </div>
         <div class="card card-section">
@@ -254,7 +254,7 @@ function showRegister() {
     <div class="row justify-content-center">
       <div class="col-md-6 col-lg-5">
         <div class="text-center mb-5">
-          <h1 class="display-5 fw-bold"><i class="bi bi-mortarboard-fill text-primary"></i> Beginner LMS</h1>
+          <h1 class="display-5 fw-bold"><i class="bi bi-mortarboard-fill text-primary"></i> Learn@will</h1>
           <p class="text-muted">Join our learning community</p>
         </div>
         <div class="card card-section">

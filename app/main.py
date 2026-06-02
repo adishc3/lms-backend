@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Beginner LMS", lifespan=lifespan)
+app = FastAPI(title="Learn@will", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=settings.GZIP_MIN_SIZE)
 if settings.FORCE_HTTPS:
     app.add_middleware(HTTPSRedirectMiddleware)
