@@ -31,6 +31,7 @@
 - External AI APIs like OpenAI/Gemini with HTTPX or official Python SDKs.
 
 ## Important design takeaways
+
 - Beginner architecture emphasizes simplicity, clear layer separation, and security.
 - Good candidate for enhancement via file uploads, quizzes, search, JWT, Docker, certificates.
 - AI features are positioned as extensions rather than core dependencies.
