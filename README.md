@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Beginner LMS — Quick start
 
 Prereqs: Python 3.12+, Docker (optional)
@@ -46,3 +47,6 @@ This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`
 ## Environment
 
 Copy `.env.example` to `.env` and customize values for local development or production.
+=======
+# lms-backend
+>>>>>>> 2482a1d4d941267d3df1903147e945a33b3e94b8
