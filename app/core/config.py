@@ -1,14 +1,17 @@
-try:
-    from pydantic import BaseSettings, ConfigDict
-except Exception:
-    from pydantic_settings import BaseSettings
-    from pydantic import ConfigDict
+import os
+from pathlib import Path
+
+from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_FILE = _BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = ConfigDict(env_file=".env", extra="ignore")
+    model_config = ConfigDict(env_file=str(ENV_FILE), extra="ignore")
 
-    DATABASE_URL: str = "mysql+pymysql://root:password@db:3306/lms"
+    DATABASE_URL: str | None = None
     SECRET_KEY: str = "change-me"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
@@ -28,7 +31,7 @@ class Settings(BaseSettings):
     AI_TEMPERATURE: float = 0.5
     AI_TIMEOUT_SECONDS: int = 30
 
-    TRUSTED_HOSTS: str = "localhost,127.0.0.1,lmsbe.up.railway.app"
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver"
     FORCE_HTTPS: bool = False
     GZIP_MIN_SIZE: int = 1000
 
@@ -49,4 +52,19 @@ class Settings(BaseSettings):
     CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000"
 
 
+def _parse_env_list(value: str | None, fallback: list[str]) -> list[str]:
+    if value:
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return fallback
+
+
 settings = Settings()
+
+if not settings.DATABASE_URL:
+    settings.DATABASE_URL = "mysql+pymysql://root:password@db:3306/lms"
+
+ALLOWED_ORIGINS: list[str] = [origin.strip() for origin in settings.CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
+
+
+def get_settings() -> Settings:
+    return settings

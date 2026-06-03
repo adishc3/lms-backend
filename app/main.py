@@ -4,8 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -18,15 +17,9 @@ from app.api.assignments import router as assignments_router
 from app.api.certificates import router as certificates_router
 from app.api.insights import router as insights_router
 from app.api.badges import router as badges_router
+from app.core.config import settings, ALLOWED_ORIGINS
 from app.core.redis_rate_limiter import RateLimitMiddleware
-from app.core.config import settings
 from app.db.session import SessionLocal, Base, engine
-
-# Construct path to frontend/dist relative to project root
-# __file__ = backend/app/main.py, so we go up 2 levels to reach project root
-frontend_dist = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
-frontend_assets_dir = os.path.join(frontend_dist, "assets")
-frontend_index_path = os.path.join(frontend_dist, "index.html")
 
 
 @asynccontextmanager
@@ -58,8 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.path.isdir(frontend_assets_dir):
-    app.mount("/assets", StaticFiles(directory=frontend_assets_dir), name="frontend_assets")
+
 
 
 @app.middleware("http")
@@ -71,8 +63,6 @@ async def add_security_headers(request, call_next):
     response.headers["Permissions-Policy"] = "interest-cohort=()"
     return response
 
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Mount all API routers under /api prefix
 app.include_router(auth_router, prefix="/api")
@@ -89,75 +79,23 @@ app.include_router(badges_router, prefix="/api")
 app.add_middleware(RateLimitMiddleware)
 
 
-
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    if os.path.isfile(frontend_index_path):
-        with open(frontend_index_path, "r", encoding="utf-8") as template_file:
-            return HTMLResponse(template_file.read())
-
-    template_path = os.path.join("templates", "app.html")
-    with open(template_path, "r", encoding="utf-8") as template_file:
-        return HTMLResponse(template_file.read())
-
-
-@app.get("/favicon.svg")
-async def favicon():
-    if os.path.isfile(os.path.join(frontend_dist, "favicon.svg")):
-        return FileResponse(os.path.join(frontend_dist, "favicon.svg"))
-    raise HTTPException(status_code=404, detail="Not Found")
-
-
-@app.get("/icons.svg")
-async def icons():
-    if os.path.isfile(os.path.join(frontend_dist, "icons.svg")):
-        return FileResponse(os.path.join(frontend_dist, "icons.svg"))
-    raise HTTPException(status_code=404, detail="Not Found")
-
-
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-async def react_app_catchall(request: Request, full_path: str):
-    # List of API endpoints that should not be served as React routes
-    api_prefixes = (
-        "api/",
-        "auth/",
-        "admin/",
-        "quizzes/",
-        "ai/",
-        "assignments/",
-        "certificates/",
-        "insights/",
-        "health",
-        "readiness",
-        "static/",
-        "assets/",
-        "favicon.svg",
-        "icons.svg",
-    )
-    
-    # Check if this is a static file (has file extension)
-    if "." in full_path.split("/")[-1]:
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    # Check if this is an API-only endpoint
-    if full_path.startswith(api_prefixes):
-        raise HTTPException(status_code=404, detail="Not Found")
-    
-    # Check the Accept header to determine if this is an API request
-    accept_header = request.headers.get("accept", "")
-    # If the request explicitly wants JSON (not from browser), return 404
-    if "application/json" in accept_header and "text/html" not in accept_header:
-        # This is an API request, let the API routes handle it
-        raise HTTPException(status_code=404, detail="Not Found")
-
-    # Serve React SPA for all client-side routes
-    if os.path.isfile(frontend_index_path):
-        with open(frontend_index_path, "r", encoding="utf-8") as template_file:
-            return HTMLResponse(template_file.read())
-
-    template_path = os.path.join("templates", "app.html")
-    with open(template_path, "r", encoding="utf-8") as template_file:
-        return HTMLResponse(template_file.read())
+@app.get("/")
+async def root():
+    """API entry point with documentation links."""
+    return {
+        "message": "Welcome to Learn@will LMS API",
+        "version": "1.0.0",
+        "documentation": {
+            "swagger_ui": "/docs",
+            "redoc": "/redoc",
+            "openapi_schema": "/openapi.json"
+        },
+        "available_endpoints": {
+            "health": "/health",
+            "readiness": "/readiness",
+            "api": "/api"
+        }
+    }
 
 
 @app.get("/health")
