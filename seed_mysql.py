@@ -34,39 +34,38 @@ def seed():
     db.add(student)
     db.flush()
     
-    course1 = Course(
-        title="Introduction to Python",
-        description="Learn Python fundamentals including variables, loops, and functions.",
-        owner_id=instructor.id,
-    )
-    course2 = Course(
-        title="Web Development Basics",
-        description="Build your first web application with HTML, CSS, and JavaScript.",
-        owner_id=instructor.id,
-    )
-    db.add(course1)
-    db.add(course2)
-    db.flush()
-    
-    lesson1 = Lesson(
-        title="Variables and Data Types",
-        content="Python has several built-in data types: integers, floats, strings, and booleans. Variables store data that can be used throughout your program.",
-        course_id=course1.id,
-    )
-    lesson2 = Lesson(
-        title="Control Flow - If Statements",
-        content="If statements allow you to execute code conditionally based on boolean expressions. Use elif for additional conditions and else as a catch-all.",
-        course_id=course1.id,
-    )
-    lesson3 = Lesson(
-        title="HTML Structure",
-        content="HTML documents have a tree structure with head and body sections. Common elements include headings (h1-h6), paragraphs (p), and links (a).",
-        course_id=course2.id,
-    )
-    db.add(lesson1)
-    db.add(lesson2)
-    db.add(lesson3)
-    
+    # Create a set of sample courses (10) each with 4 lessons
+    sample_courses = [
+        ("Introduction to Python", "Learn Python fundamentals including variables, loops, and functions."),
+        ("Web Development Basics", "Build your first web application with HTML, CSS, and JavaScript."),
+        ("Data Science Foundations", "Intro to data analysis, pandas, and basic statistics."),
+        ("Databases 101", "Relational databases, SQL queries, and schema design."),
+        ("APIs with FastAPI", "Build and document REST APIs using FastAPI and Pydantic."),
+        ("Machine Learning Intro", "Supervised and unsupervised learning basics."),
+        ("DevOps Essentials", "CI/CD, containers, and deployment basics."),
+        ("Frontend with React", "Component-based UI development with React and hooks."),
+        ("Version Control with Git", "Branching, merging, and collaboration workflows."),
+        ("Testing with Pytest", "Write reliable tests and use fixtures and mocks.")
+    ]
+
+    lesson_templates = [
+        ("Overview", "An overview of the topic and learning objectives."),
+        ("Getting Started", "Setup and first steps to get hands-on quickly."),
+        ("Core Concepts", "Key concepts and patterns to understand."),
+        ("Hands-on Exercise", "Practical exercise to reinforce learning.")
+    ]
+
+    courses_created = []
+    for title, description in sample_courses:
+        course = Course(title=title, description=description, owner_id=instructor.id)
+        db.add(course)
+        db.flush()
+        # create 4 lessons per course
+        for ltitle, lcontent in lesson_templates:
+            lesson = Lesson(title=ltitle, content=lcontent, course_id=course.id)
+            db.add(lesson)
+        courses_created.append(course)
+
     db.commit()
     db.close()
     print("Seed data created successfully!")
