@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     AI_TEMPERATURE: float = 0.5
     AI_TIMEOUT_SECONDS: int = 30
 
-    TRUSTED_HOSTS: str = "localhost,127.0.0.1,testserver"
+    TRUSTED_HOSTS: str = "localhost,127.0.0.1,lmsbe.up.railway.app"
     FORCE_HTTPS: bool = False
     GZIP_MIN_SIZE: int = 1000
 
