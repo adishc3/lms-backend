@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_active_user
+from sqlalchemy import func
+from app.api.deps import get_db, get_current_active_user, require_instructor
 from app.crud.lesson_completion import get_completion_stats
 from app.crud.enrollment import list_enrollments_for_user
 from app.crud.course import get_courses
+from app.models.course import Course
+from app.models.enrollment import Enrollment
+from app.models.lesson import Lesson
+from app.models.lesson_completion import LessonCompletion
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -35,3 +40,35 @@ def recommended_courses(limit: int = 5, db: Session = Depends(get_db), current_u
             break
     
     return {"recommendations": recommendations}
+
+
+@router.get("/instructor-overview")
+def instructor_overview(current_user=Depends(require_instructor), db: Session = Depends(get_db)):
+    total_courses = db.query(Course).filter(Course.owner_id == current_user.id).count()
+    unique_students = (
+        db.query(func.count(func.distinct(Enrollment.user_id)))
+        .join(Course, Enrollment.course_id == Course.id)
+        .filter(Course.owner_id == current_user.id)
+        .scalar()
+        or 0
+    )
+    total_lessons = (
+        db.query(Lesson)
+        .join(Course, Lesson.course_id == Course.id)
+        .filter(Course.owner_id == current_user.id)
+        .count()
+    )
+    total_completions = (
+        db.query(LessonCompletion)
+        .join(Lesson, LessonCompletion.lesson_id == Lesson.id)
+        .join(Course, Lesson.course_id == Course.id)
+        .filter(Course.owner_id == current_user.id)
+        .count()
+    )
+
+    return {
+        "total_courses": total_courses,
+        "unique_students": unique_students,
+        "total_lessons": total_lessons,
+        "total_completions": total_completions,
+    }

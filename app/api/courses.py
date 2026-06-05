@@ -6,11 +6,13 @@ from app.schemas.lesson import LessonCreate, LessonRead, LessonUpdate
 from app.crud.course import get_course, get_courses, update_course, delete_course
 from app.crud.lesson import get_lessons_by_course, get_lesson, create_lesson, update_lesson, delete_lesson
 from app.crud.lesson_completion import (
+    get_completion,
     mark_completion,
     get_completed_lessons_for_user_in_course,
     count_completed_lessons_for_user_in_course,
 )
 from app.crud.enrollment import get_enrollment, create_enrollment, get_enrolled_students_by_course, list_enrollments_for_user
+from app.crud.notification import create_notification
 from app.schemas.lesson_completion import LessonCompletionRead
 from app.core.email import send_email
 from app.core.cloudinary_storage import upload_lesson_file
@@ -129,7 +131,15 @@ def complete_lesson(
     if not lesson or lesson.course_id != course_id:
         raise HTTPException(status_code=404, detail="Lesson not found")
     ensure_course_access(course, current_user, db)
+    existing_completion = get_completion(db, current_user.id, lesson_id)
     completion = mark_completion(db, current_user.id, lesson_id, time_spent_minutes=time_spent_minutes)
+    if not existing_completion:
+        create_notification(
+            db,
+            current_user.id,
+            title=f"Lesson completed: {lesson.title}",
+            message=f"You completed '{lesson.title}' in '{course.title}'. Keep learning!",
+        )
     return completion
 
 

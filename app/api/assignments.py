@@ -8,6 +8,7 @@ from app.crud.assignment import create_assignment, get_assignment, list_assignme
 from app.crud.submission import create_submission, list_submissions_for_assignment, grade_submission, get_submission
 from app.crud.enrollment import get_enrollment
 from app.crud.course import get_course
+from app.crud.notification import create_notification
 from app.models.submission import Submission
 import csv
 import io
@@ -72,6 +73,12 @@ def submit_assignment(
         file_path = os.path.join("static", "uploads", safe_name)
 
     submission = create_submission(db, assignment_id=assignment_id, user_id=current_user.id, content=content, file_path=file_path)
+    create_notification(
+        db,
+        assignment.course.owner_id,
+        title=f"Assignment submitted: {assignment.title}",
+        message=f"{current_user.full_name or current_user.email} submitted '{assignment.title}' for '{assignment.course.title}'.",
+    )
     return submission
 
 
@@ -88,6 +95,15 @@ def grade_assignment(assignment_id: int, submission_id: int, grade: int, feedbac
     if not submission or submission.assignment_id != assignment_id:
         raise HTTPException(status_code=404, detail="Submission not found")
     graded = grade_submission(db, submission, grader_id=current_user.id, grade=grade, feedback=feedback)
+    create_notification(
+        db,
+        submission.user_id,
+        title=f"Assignment graded: {assignment.title}",
+        message=(
+            f"Your submission for '{assignment.title}' was graded {grade}."
+            + (f" Feedback: {feedback}" if feedback else "")
+        ),
+    )
     return graded
 
 

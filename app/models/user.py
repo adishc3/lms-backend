@@ -22,6 +22,7 @@ class User(Base):
     email_verified_at = Column(DateTime(timezone=True), nullable=True)
     owned_courses = relationship("Course", back_populates="owner")
     admin_logs = relationship("AdminLog", back_populates="user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     submissions = relationship("Submission", foreign_keys="[Submission.user_id]", back_populates="user")
     graded_submissions = relationship("Submission", foreign_keys="[Submission.graded_by]", back_populates="grader")
     user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")

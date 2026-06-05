@@ -16,6 +16,7 @@ from app.crud.quiz import (
     get_attempts_for_user,
     submit_quiz_attempt,
 )
+from app.crud.notification import create_notification
 from app.crud.course import get_course
 from app.crud.enrollment import get_enrollment
 
@@ -73,6 +74,12 @@ def submit_attempt(quiz_id: int, attempt_in: QuizAttemptCreate, current_user=Dep
     attempt = submit_quiz_attempt(db, current_user.id, quiz_id, attempt_in)
     if not attempt:
         raise HTTPException(status_code=400, detail="Unable to submit quiz attempt")
+    create_notification(
+        db,
+        current_user.id,
+        title=f"Quiz completed: {quiz.title}",
+        message=f"You completed '{quiz.title}' with a score of {attempt.score}.",
+    )
     return attempt
 
 
