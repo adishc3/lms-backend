@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_active_user
-from app.crud.certificate import get_certificate_by_user_course
 from app.models.certificate import Certificate
 from app.core.certificate_generator import generate_certificate_pdf
-from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from io import BytesIO
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])

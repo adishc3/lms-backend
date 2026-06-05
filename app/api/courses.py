@@ -1,12 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status, Body
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_instructor, get_current_active_user
 from app.schemas.course import CourseCreate, CourseRead
-from app.schemas.lesson import LessonCreate, LessonRead
-from app.crud.course import get_course, get_courses, create_course, update_course, delete_course
-from app.crud.lesson import get_lessons_by_course, get_lesson, create_lesson, set_lesson_asset
+from app.schemas.lesson import LessonCreate, LessonRead, LessonUpdate
+from app.crud.course import get_course, get_courses, update_course, delete_course
+from app.crud.lesson import get_lessons_by_course, get_lesson, create_lesson, update_lesson, delete_lesson
 from app.crud.lesson_completion import (
-    get_completion,
     mark_completion,
     get_completed_lessons_for_user_in_course,
     count_completed_lessons_for_user_in_course,
@@ -181,6 +180,50 @@ def create_course_lesson(
         background_tasks.add_task(send_email, subject, recipients, body, html_body)
 
     return lesson
+
+
+@router.put("/{course_id}/lessons/{lesson_id}", response_model=LessonRead)
+def edit_lesson(
+    course_id: int,
+    lesson_id: int,
+    lesson_in: LessonUpdate,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    lesson = get_lesson(db, lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    if course.owner_id != current_user.id and current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Not permitted")
+
+    return update_lesson(db, lesson, lesson_in)
+
+
+@router.delete("/{course_id}/lessons/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_lesson(
+    course_id: int,
+    lesson_id: int,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    lesson = get_lesson(db, lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    if course.owner_id != current_user.id and current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Not permitted")
+
+    delete_lesson(db, lesson)
+    return None
 
 
 @router.post("/{course_id}/lessons/{lesson_id}/upload", response_model=LessonRead)

@@ -11,6 +11,11 @@ class LessonCreate(LessonBase):
     pass
 
 
+class LessonUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+
+
 class FileMetadata(BaseModel):
     public_id: str
     resource_type: str

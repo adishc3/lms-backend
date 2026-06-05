@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_instructor, get_current_active_user
 from app.schemas.assignment import AssignmentCreate, AssignmentRead
-from app.schemas.submission import SubmissionCreate, SubmissionRead
+from app.schemas.submission import SubmissionRead
 from app.crud.assignment import create_assignment, get_assignment, list_assignments_for_course
 from app.crud.submission import create_submission, list_submissions_for_assignment, grade_submission, get_submission
 from app.crud.enrollment import get_enrollment
@@ -11,8 +11,6 @@ from app.crud.course import get_course
 from app.models.submission import Submission
 import csv
 import io
-import os
-from app.core.config import settings
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 

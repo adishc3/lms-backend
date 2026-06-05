@@ -15,8 +15,7 @@ def test_submission_file_upload_flow(client):
         headers={"Authorization": f"Bearer {inst_token}"},
     )
     course_id = course.json()["id"]
-    l1 = client.post(f"/courses/{course_id}/lessons", json={"title": "L1", "content": "c"}, headers={"Authorization": f"Bearer {inst_token}"})
-
+    
     assign = client.post(f"/assignments/courses/{course_id}", json={"title": "A1", "description": "d", "due_date": None, "max_score": 100}, headers={"Authorization": f"Bearer {inst_token}"})
     assignment_id = assign.json()["id"]
 

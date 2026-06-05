@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_active_user
 from app.schemas.ai import AIStudyRequest, AIStudyResponse, AIQuizRequest, AIQuizResponse

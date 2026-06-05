@@ -1,12 +1,10 @@
 import os
-import pathlib
 
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["SECRET_KEY"] = "testing"
 os.environ["EMAIL_ENABLED"] = "False"
 os.environ["AI_ENABLED"] = "False"
 
-from app.core.config import settings
 from app.db.session import engine, Base
 from app.main import app
 import pytest

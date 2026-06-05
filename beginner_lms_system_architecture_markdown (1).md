@@ -2,39 +2,29 @@
 
 ## Table of Contents
 
-1. [How the Application Works](#1-how-the-application-works)
-2. [Individual Component Deep-Dive](#2-individual-component-deep-dive)
-3. [Public Home Page & Protected Access](#3-public-home-page--protected-access)
-4. [User Roles & Permissions](#4-user-roles--permissions)
-5. [Module Working — Authentication](#5-module-working--authentication)
-6. [Module Working — Course Management](#6-module-working--course-management)
-7. [Module Working — Lesson Management](#7-module-working--lesson-management)
-8. [Module Working — Enrollment](#8-module-working--enrollment)
-9. [Module Working — Notification System](#9-module-working--notification-system)
-10. [Automatic Logout & Session Management](#10-automatic-logout--session-management)
-11. [User Execution Flows](#11-user-execution-flows)
-    - [Student Flow](#11.1-student-execution-flow)
-    - [Instructor Flow](#11.2-instructor-execution-flow)
-    - [Admin Flow](#11.3-admin-execution-flow)
-12. [Security & Access Control Internals](#12-security--access-control-internals)
-13. [Full Backend Execution Pipeline](#13-full-backend-execution-pipeline)
-14. [Database Relationships](#14-database-relationships)
-15. [AI Features Integration](#15-ai-features-integration)
-    - [AI Study Assistant](#151-ai-study-assistant-for-students)
-    - [AI Quiz Generator](#152-ai-quiz-generator-for-instructors)
-    - [AI Progress Insights](#153-ai-progress-insights-for-students)
-    - [AI Enrollment Recommender](#154-ai-enrollment-recommender)
-16. [AI System Architecture](#16-ai-system-architecture)
-17. [AI Technologies Used](#17-ai-technologies-used)
-18. [Beginner AI Integration Strategy](#18-beginner-ai-integration-strategy)
-19. [Benefits of AI Features](#19-benefits-of-ai-features)
-20. [Future AI Improvements](#20-future-ai-improvements)
-21. [Final Summary](#21-final-summary)
+1. [Project Overview](#1-project-overview)
+2. [Tech Stack](#2-tech-stack)
+3. [High-Level System Architecture](#3-high-level-system-architecture)
+4. [Public Home Page Access](#4-public-home-page-access)
+5. [User Roles](#5-user-roles)
+6. [Application Modules](#6-application-modules)
+7. [Permission Validation](#7-permission-validation)
+8. [Student Notification System](#8-student-notification-system)
+9. [Automatic Logout & Session Management](#9-automatic-logout--session-management)
+10. [Backend Architecture](#10-backend-architecture)
+11. [Database Design](#11-database-design)
+12. [Frontend Workflow](#12-frontend-workflow)
+13. [Backend Execution Flow](#13-backend-execution-flow)
+14. [AI Features Integration](#14-ai-features-integration)
+15. [AI System Architecture](#15-ai-system-architecture)
+16. [Folder Structure](#16-folder-structure)
+17. [Important Concepts Learned](#17-important-concepts-learned)
+18. [Final Summary](#18-final-summary)
 ---
 
 ## 1. Project Overview
 
-This project is a beginner-friendly Learning Management System (LMS) built using Java and Spring Boot.
+This project is a beginner-friendly Learning Management System (LMS) built using Python and FastAPI.
 
 The application allows:
 - Students to enroll in courses and view lessons
@@ -46,7 +36,7 @@ The system follows a monolithic architecture where:
 - Backend
 - Database
 
-all work together inside a single application.
+The system leverages server-side rendering with Jinja2 templates and a robust FastAPI backend.
 
 ---
 
@@ -57,9 +47,9 @@ all work together inside a single application.
 | Technology | Purpose |
 |---|---|
 | HTML | Page structure |
-| CSS | Styling |
-| Bootstrap | Responsive UI components |
-| Thymeleaf | Connect frontend with backend |
+| CSS / Bootstrap 5 | Styling and responsive UI |
+| Jinja2 | Server-side template rendering |
+| JavaScript | Dynamic UI interactions |
 
 ---
 
@@ -67,13 +57,13 @@ all work together inside a single application.
 
 | Technology | Purpose |
 |---|---|
-| Java 17 | Main programming language |
-| Spring Boot | Backend framework |
-| Spring MVC | MVC architecture |
-| Spring Security | Authentication and authorization |
-| Spring Data JPA | Database operations |
-| Hibernate | ORM mapping |
-| Maven | Dependency management |
+| Python 3.12+ | Main programming language |
+| FastAPI | Backend framework |
+| Pydantic | Data validation |
+| JWT / Passlib | Authentication and security |
+| SQLAlchemy | Database operations (ORM) |
+| Alembic | Database migrations |
+| Uvicorn | ASGI Server |
 
 ---
 
@@ -91,13 +81,13 @@ all work together inside a single application.
  ┌──────────────────────────┐
  │        Frontend          │
  │ HTML + CSS + Bootstrap   │
- │ Thymeleaf Templates      │
+ │ Jinja2 Templates         │
  └────────────┬─────────────┘
               │ HTTP Request
               ▼
  ┌──────────────────────────┐
  │        Controller        │
- │ Spring Boot Controllers  │
+ │ FastAPI APIRouters       │
  └────────────┬─────────────┘
               │
               ▼
@@ -108,8 +98,9 @@ all work together inside a single application.
               │
               ▼
  ┌──────────────────────────┐
- │     Repository Layer     │
- │ Spring Data JPA          │
+ │     Database Layer       │
+ │ SQLAlchemy ORM / Models  │
+ │ SQLAlchemy Models        │
  └────────────┬─────────────┘
               │ SQL Queries
               ▼
@@ -199,15 +190,15 @@ Redirect To Login Page
 - Role-based access
 
 ### Technologies Used
-- Spring Security
-- BCrypt password encoder
+- JWT (JSON Web Tokens)
+- Passlib (Bcrypt)
 
 ### Workflow
 1. User opens login page
 2. User submits email and password
-3. Spring Security validates credentials
+3. FastAPI security utility validates credentials
 4. Database checks user information
-5. Session created after successful login
+5. JWT Token generated after successful login
 6. User redirected to dashboard
 
 ---
@@ -290,14 +281,12 @@ Creation             Denied Error
 
 ---
 
-## Spring Security Validation Example
+## FastAPI Permission Example
 
-```java
-@PreAuthorize("hasRole('INSTRUCTOR') or hasRole('ADMIN')")
-@PostMapping("/courses")
-public String createCourse() {
-    return "Course Created";
-}
+```python
+@router.post("/courses", dependencies=[Depends(RoleChecker(["INSTRUCTOR", "ADMIN"]))])
+async def create_course(course_data: CourseCreate):
+    return {"message": "Course Created"}
 ```
 
 ---
@@ -353,8 +342,8 @@ Login to the LMS to access the lesson.
 
 | Technology | Purpose |
 |---|---|
-| Spring Boot Mail | Send emails |
-| Gmail SMTP | Mail server |
+| Fastapi-mail / SMTPLib | Send emails |
+| BackgroundTasks | Non-blocking email processing |
 
 ---
 
@@ -385,29 +374,18 @@ Emails sent automatically.
 
 ---
 
-## Mail Service Example
+## Notification Service Example (Python)
 
-```java
-@Service
-public class EmailService {
-
-    @Autowired
-    private JavaMailSender mailSender;
-
-    public void sendNotification(String toEmail) {
-
-        SimpleMailMessage message =
-                new SimpleMailMessage();
-
-        message.setTo(toEmail);
-        message.setSubject("New Lesson Added");
-        message.setText(
-            "A new lesson has been added."
-        );
-
-        mailSender.send(message);
-    }
-}
+```python
+async def send_notification(email: str, course_name: str):
+    message = MessageSchema(
+        subject="New Lesson Added",
+        recipients=[email],
+        body=f"A new lesson has been added to {course_name}.",
+        subtype="html"
+    )
+    fm = FastMail(conf)
+    await fm.send_message(message)
 ```
 
 ---
@@ -1056,4 +1034,3 @@ This LMS project demonstrates:
 - Layered backend architecture
 
 The project is ideal for beginners learning Spring Boot and backend development.
-

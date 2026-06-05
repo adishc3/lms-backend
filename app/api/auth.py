@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from app.schemas.user import UserCreate, UserRead, UserLogin
+from app.schemas.user import UserCreate, UserRead
 from app.schemas.token import Token
 from app.db.session import SessionLocal
 from app.crud.user import get_user_by_email, create_user
 from app.core.security import verify_password, create_access_token
 from app.core.security import create_token, verify_token
 from app.core.email import send_email
-from app.core.config import settings
 from datetime import datetime
 from pydantic import BaseModel
 from app.api.deps import get_current_active_user

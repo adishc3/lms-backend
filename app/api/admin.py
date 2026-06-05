@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, require_admin, get_current_active_user
+from app.api.deps import get_db, require_admin
 from app.schemas.user import UserRead, UserUpdate
 from app.crud.user import get_user, get_users, update_user
 from app.crud.admin_log import create_admin_log, get_admin_logs
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 import csv
 import io
 
@@ -46,7 +46,7 @@ def edit_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db), 
 @router.get("/logs", response_model=list[dict])
 def list_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     logs = get_admin_logs(db, skip=skip, limit=limit)
-    return [{"id": l.id, "user_id": l.user_id, "action": l.action, "details": l.details, "ip_address": l.ip_address, "created_at": l.created_at} for l in logs]
+    return [{"id": log.id, "user_id": log.user_id, "action": log.action, "details": log.details, "ip_address": log.ip_address, "created_at": log.created_at} for log in logs]
 
 
 @router.post("/users/import-csv")

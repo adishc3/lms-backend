@@ -42,7 +42,7 @@ async def upload_lesson_file(file: UploadFile, lesson_id: int) -> dict:
         resource_type_map = {
             # Videos
             'mp4': 'video', 'avi': 'video', 'mov': 'video', 'mkv': 'video',
-            'webm': 'video', 'flv': 'video', 'wmv': 'video', 'mov': 'video',
+            'webm': 'video', 'flv': 'video', 'wmv': 'video',
             # Images
             'jpg': 'image', 'jpeg': 'image', 'png': 'image', 'gif': 'image',
             'bmp': 'image', 'webp': 'image', 'svg': 'image', 'ico': 'image',

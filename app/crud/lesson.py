@@ -24,8 +24,16 @@ def create_lesson(db: Session, lesson_in, course_id: int, asset_path: str | None
     return lesson
 
 
-def set_lesson_asset(db: Session, lesson: Lesson, asset_path: str):
-    lesson.asset_path = asset_path
+def update_lesson(db: Session, lesson: Lesson, lesson_in):
+    if lesson_in.title is not None:
+        lesson.title = lesson_in.title
+    if lesson_in.content is not None:
+        lesson.content = sanitize_html(lesson_in.content)
     db.commit()
     db.refresh(lesson)
     return lesson
+
+
+def delete_lesson(db: Session, lesson: Lesson):
+    db.delete(lesson)
+    db.commit()

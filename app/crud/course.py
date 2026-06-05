@@ -11,7 +11,12 @@ def get_courses(db: Session, skip: int = 0, limit: int = 100):
 
 
 def create_course(db: Session, course_in, owner_id: int):
-    course = Course(title=course_in.title, description=course_in.description, owner_id=owner_id)
+    course = Course(
+        title=course_in.title,
+        description=course_in.description,
+        cover_image_url=course_in.cover_image_url,
+        owner_id=owner_id,
+    )
     db.add(course)
     db.commit()
     db.refresh(course)
@@ -21,6 +26,7 @@ def create_course(db: Session, course_in, owner_id: int):
 def update_course(db: Session, course: Course, course_in):
     course.title = course_in.title
     course.description = course_in.description
+    course.cover_image_url = course_in.cover_image_url
     db.commit()
     db.refresh(course)
     return course

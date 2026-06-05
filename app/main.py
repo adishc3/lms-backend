@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,9 +17,9 @@ from app.api.assignments import router as assignments_router
 from app.api.certificates import router as certificates_router
 from app.api.insights import router as insights_router
 from app.api.badges import router as badges_router
-from app.core.config import settings, ALLOWED_ORIGINS
+from app.core.config import settings
 from app.core.redis_rate_limiter import RateLimitMiddleware
-from app.db.session import SessionLocal, Base, engine
+from app.db.session import Base, engine
 
 
 @asynccontextmanager

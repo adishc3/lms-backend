@@ -1,6 +1,3 @@
-from app.db.session import SessionLocal
-
-
 def test_assignment_submit_and_grade_flow(client):
     # register instructor
     client.post("/auth/register", json={"email": "inst2@example.com", "password": "pass"})

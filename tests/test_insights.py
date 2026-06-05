@@ -22,12 +22,12 @@ def test_recommended_courses_endpoint(client):
         u = db.query(User).filter(User.email == "rec_inst@example.com").first()
         u.role = Role.instructor
         db.commit()
-    
-    course = client.post(
+
+    _course_id = client.post(
         "/courses/",
         json={"title": "Recommended Course", "description": "Test"},
         headers={"Authorization": f"Bearer {inst_token}"},
-    )
+    ).json()["id"]
     
     # create student
     client.post("/auth/register", json={"email": "rec_student@example.com", "password": "pass"})

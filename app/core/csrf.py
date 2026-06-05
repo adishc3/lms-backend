@@ -1,5 +1,4 @@
 import secrets
-from fastapi import HTTPException, status
 from fastapi.security import APIKeyHeader
 
 csrf_header = APIKeyHeader(name="X-CSRF-Token", auto_error=False)

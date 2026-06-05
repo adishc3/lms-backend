@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, require_admin, get_current_active_user
+from app.api.deps import get_db, get_current_active_user
 from app.crud.lesson_completion import get_completion_stats
-from app.crud.enrollment import get_enrollment, list_enrollments_for_user
+from app.crud.enrollment import list_enrollments_for_user
 from app.crud.course import get_courses
-from app.models.enrollment import Enrollment
-from app.db.session import SessionLocal
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 

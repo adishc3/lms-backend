@@ -13,13 +13,13 @@ def generate_certificate_pdf(name: str, course_title: str, issued_at_str: str, c
     c.drawCentredString(width / 2, height - 100, "Certificate of Completion")
 
     c.setFont("Helvetica", 14)
-    c.drawCentredString(width / 2, height - 150, f"This certifies that")
+    c.drawCentredString(width / 2, height - 150, "This certifies that")
 
     c.setFont("Helvetica-Bold", 20)
     c.drawCentredString(width / 2, height - 190, name)
 
     c.setFont("Helvetica", 14)
-    c.drawCentredString(width / 2, height - 230, f"has successfully completed the course")
+    c.drawCentredString(width / 2, height - 230, "has successfully completed the course")
 
     c.setFont("Helvetica-Bold", 16)
     c.drawCentredString(width / 2, height - 260, course_title)
