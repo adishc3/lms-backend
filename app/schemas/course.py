@@ -6,6 +6,9 @@ class CourseBase(BaseModel):
     title: str
     description: Optional[str] = None
     cover_image_url: Optional[str] = None
+    price: int = 0
+    is_paid: bool = False
+    prerequisite_course_id: Optional[int] = None
 
 
 class CourseCreate(CourseBase):
@@ -15,6 +18,9 @@ class CourseCreate(CourseBase):
 class CourseRead(CourseBase):
     id: int
     owner_id: int
+    price: int
+    is_paid: bool
+    prerequisite_course_id: Optional[int] = None
     cover_image_url: Optional[str] = None
 
     model_config = {

@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,7 +18,12 @@ from app.api.certificates import router as certificates_router
 from app.api.insights import router as insights_router
 from app.api.notifications import router as notifications_router
 from app.api.badges import router as badges_router
+from app.api.organizations import router as organizations_router
+from app.api.localization import router as localization_router
+from app.api.sso import router as sso_router
+from app.api.learning_standards import router as standards_router
 from app.core.config import settings
+from app.core.i18n import get_preferred_locale, translate
 from app.core.redis_rate_limiter import RateLimitMiddleware
 from app.db.session import Base, engine
 
@@ -56,6 +61,12 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def set_locale(request: Request, call_next):
+    request.state.lang = get_preferred_locale(request.headers.get("accept-language", ""))
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def add_security_headers(request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -76,16 +87,20 @@ app.include_router(certificates_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(badges_router, prefix="/api")
+app.include_router(organizations_router, prefix="/api")
+app.include_router(localization_router, prefix="/api")
+app.include_router(sso_router, prefix="/api")
+app.include_router(standards_router, prefix="/api")
 
 # add Redis-backed rate limiter middleware (falls back to in-memory)
 app.add_middleware(RateLimitMiddleware)
 
 
 @app.get("/")
-async def root():
+async def root(request: Request):
     """API entry point with documentation links."""
     return {
-        "message": "Welcome to Learn@will LMS API",
+        "message": translate("welcome_message", request.state.lang),
         "version": "1.0.0",
         "documentation": {
             "swagger_ui": "/docs",
@@ -96,7 +111,8 @@ async def root():
             "health": "/health",
             "readiness": "/readiness",
             "api": "/api"
-        }
+        },
+        "locale": request.state.lang,
     }
 
 

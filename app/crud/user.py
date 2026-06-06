@@ -22,6 +22,7 @@ def create_user(db: Session, user_in):
         full_name=user_in.full_name,
         hashed_password=get_password_hash(user_in.password),
         role=Role(role_value),
+        organization_id=getattr(user_in, "organization_id", None),
     )
     db.add(user)
     db.commit()

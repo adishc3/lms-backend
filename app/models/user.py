@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Enum, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -20,9 +20,15 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     role = Column(Enum(Role), default=Role.student)
     email_verified_at = Column(DateTime(timezone=True), nullable=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    points = Column(Integer, default=0, nullable=False)
+    level = Column(Integer, default=1, nullable=False)
+
     owned_courses = relationship("Course", back_populates="owner")
     admin_logs = relationship("AdminLog", back_populates="user")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     submissions = relationship("Submission", foreign_keys="[Submission.user_id]", back_populates="user")
     graded_submissions = relationship("Submission", foreign_keys="[Submission.graded_by]", back_populates="grader")
     user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="users")

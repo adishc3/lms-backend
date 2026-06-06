@@ -1,0 +1,6 @@
+{
+  "welcome_message": "Welcome to Learn@will LMS API",
+  "health_status_ok": "ok",
+  "organization_created": "Organization successfully created",
+  "user_assigned_to_organization": "User assigned to organization"
+}

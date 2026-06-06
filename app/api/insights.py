@@ -9,6 +9,7 @@ from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.lesson import Lesson
 from app.models.lesson_completion import LessonCompletion
+from app.models.user import User
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -71,4 +72,25 @@ def instructor_overview(current_user=Depends(require_instructor), db: Session = 
         "unique_students": unique_students,
         "total_lessons": total_lessons,
         "total_completions": total_completions,
+    }
+
+
+@router.get("/leaderboard")
+def leaderboard(limit: int = 10, db: Session = Depends(get_db)):
+    top_users = (
+        db.query(User)
+        .order_by(User.points.desc(), User.level.desc())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "leaderboard": [
+            {
+                "user_id": user.id,
+                "full_name": user.full_name,
+                "points": user.points,
+                "level": user.level,
+            }
+            for user in top_users
+        ]
     }

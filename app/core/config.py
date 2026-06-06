@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
 
+    # Single sign-on / enterprise integration
+    SSO_PROVIDER: str | None = None
+    SSO_CLIENT_ID: str | None = None
+    SSO_CLIENT_SECRET: str | None = None
+    SSO_METADATA_URL: str | None = None
+
+    # Localization / internationalization
+    SUPPORTED_LOCALES: str = "en,es"
+    DEFAULT_LOCALE: str = "en"
+
     # Rate limiting defaults (in-memory, per-IP, suitable for single-process deployments)
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_WINDOW_SECONDS: int = 60

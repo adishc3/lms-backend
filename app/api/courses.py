@@ -1,8 +1,12 @@
+from uuid import uuid4
+
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_instructor, get_current_active_user
 from app.schemas.course import CourseCreate, CourseRead
 from app.schemas.lesson import LessonCreate, LessonRead, LessonUpdate
+from app.schemas.event import EventCreate, EventRead
+from app.schemas.payment import PaymentCreate, PaymentRead
 from app.crud.course import get_course, get_courses, update_course, delete_course
 from app.crud.lesson import get_lessons_by_course, get_lesson, create_lesson, update_lesson, delete_lesson
 from app.crud.lesson_completion import (
@@ -12,6 +16,13 @@ from app.crud.lesson_completion import (
     count_completed_lessons_for_user_in_course,
 )
 from app.crud.enrollment import get_enrollment, create_enrollment, get_enrolled_students_by_course, list_enrollments_for_user
+from app.crud.event import create_event, delete_event, get_event, list_events, update_event
+from app.crud.payment import (
+    complete_payment,
+    create_payment,
+    get_completed_payment_for_course,
+    list_payments_for_user,
+)
 from app.crud.notification import create_notification
 from app.schemas.lesson_completion import LessonCompletionRead
 from app.core.email import send_email
@@ -73,10 +84,52 @@ def enroll_course(course_id: int, current_user=Depends(get_current_active_user),
         raise HTTPException(status_code=404, detail="Course not found")
     if current_user.role.value == "instructor":
         raise HTTPException(status_code=403, detail="Instructors cannot enroll in courses")
+    if course.is_paid and not get_completed_payment_for_course(db, current_user.id, course_id):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Payment required. Purchase this course before enrolling.",
+        )
     if get_enrollment(db, current_user.id, course_id):
         return course
     create_enrollment(db, current_user.id, course_id)
     return course
+
+
+@router.post("/{course_id}/purchase", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)
+def purchase_course(
+    course_id: int,
+    payment_in: PaymentCreate,
+    current_user=Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    if not course.is_paid:
+        raise HTTPException(status_code=400, detail="Course does not require payment")
+    if current_user.role.value == "instructor":
+        raise HTTPException(status_code=403, detail="Instructors cannot purchase courses")
+    if get_completed_payment_for_course(db, current_user.id, course_id):
+        raise HTTPException(status_code=400, detail="Course already purchased")
+
+    payment = create_payment(
+        db,
+        user_id=current_user.id,
+        course_id=course.id,
+        amount=course.price or 0,
+        currency=payment_in.currency,
+        payment_method=payment_in.payment_method,
+        transaction_reference=str(uuid4()),
+    )
+    payment = complete_payment(db, payment, transaction_reference=payment.transaction_reference)
+    if not get_enrollment(db, current_user.id, course_id):
+        create_enrollment(db, current_user.id, course_id)
+    return payment
+
+
+@router.get("/payments", response_model=list[PaymentRead])
+def my_payments(current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
+    return list_payments_for_user(db, current_user.id)
 
 
 @router.get("/my/courses", response_model=list[CourseRead])
@@ -93,6 +146,83 @@ def ensure_course_access(course, current_user, db: Session):
     if get_enrollment(db, current_user.id, course.id):
         return True
     raise HTTPException(status_code=403, detail="Enrollment required")
+
+
+def ensure_course_owner_or_admin(course, current_user):
+    if course.owner_id == current_user.id or current_user.role.value == "admin":
+        return True
+    raise HTTPException(status_code=403, detail="Not permitted")
+
+
+@router.get("/{course_id}/events", response_model=list[EventRead])
+def list_course_events(course_id: int, current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    ensure_course_access(course, current_user, db)
+    return list_events(db, course_id=course_id)
+
+
+@router.get("/{course_id}/events/{event_id}", response_model=EventRead)
+def read_course_event(course_id: int, event_id: int, current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    event = get_event(db, event_id)
+    if not event or event.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Event not found")
+    ensure_course_access(course, current_user, db)
+    return event
+
+
+@router.post("/{course_id}/events", response_model=EventRead, status_code=status.HTTP_201_CREATED)
+def create_course_event(
+    course_id: int,
+    event_in: EventCreate,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    ensure_course_owner_or_admin(course, current_user)
+    return create_event(db, course_id, event_in)
+
+
+@router.put("/{course_id}/events/{event_id}", response_model=EventRead)
+def update_course_event(
+    course_id: int,
+    event_id: int,
+    event_in: EventCreate,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    event = get_event(db, event_id)
+    if not event or event.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Event not found")
+    ensure_course_owner_or_admin(course, current_user)
+    return update_event(db, event, event_in)
+
+
+@router.delete("/{course_id}/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_course_event(
+    course_id: int,
+    event_id: int,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    event = get_event(db, event_id)
+    if not event or event.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Event not found")
+    ensure_course_owner_or_admin(course, current_user)
+    delete_event(db, event)
+    return None
 
 
 @router.get("/{course_id}/lessons", response_model=list[LessonRead])

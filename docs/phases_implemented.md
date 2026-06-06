@@ -19,6 +19,14 @@ This document lists each planned phase and the features we have implemented so f
 - Implemented: `email_verified_at` on `User`; JWT-based verification and password reset tokens; endpoints to verify, resend verification, request password reset, and confirm new password.
 - Files: updates in `app/models/user.py`, `app/api/auth.py`, `app/core/security.py`, migration `0004_add_email_verified.py`.
 
+## Phase 3 — Gamification, Scheduling, and Monetization
+- Implemented: course event scheduling, mock payment/purchase workflow, paid-course enrollment gating, and a leaderboard API.
+- Files: `app/models/payment.py`, `app/crud/event.py`, `app/crud/payment.py`, `app/api/courses.py`, `app/api/insights.py`, `app/schemas/event.py`, `app/schemas/payment.py`, `app/models/__init__.py`.
+
+## Phase 4 —Enterprise Localizations & Standardization
+- Implemented: organization management APIs, localization support with language selection, SSO configuration endpoints, and learning standard compatibility placeholders for SCORM/xAPI.
+- Files: `app/core/config.py`, `app/core/i18n.py`, `app/api/organizations.py`, `app/api/localization.py`, `app/api/sso.py`, `app/api/learning_standards.py`, `app/crud/organization.py`, `app/schemas/organization.py`, `backend/locales/en.json`, `backend/locales/es.json`.
+
 ## Phase 20 — Student Dashboard & UX
 - Implemented: Student-facing dashboard showing enrolled courses, progress bars, due items, and quick actions.
 - Files: Added dashboard endpoint in `app/main.py`, created `templates/student_dashboard.html` template.

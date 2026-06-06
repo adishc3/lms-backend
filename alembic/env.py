@@ -13,10 +13,7 @@ from app.core.config import settings
 from app.db.session import Base
 # Import all models here so they register with Base.metadata
 # This allows Alembic to detect your tables during 'autogenerate'
-from app.models.user import User # noqa
-from app.models.quiz import Quiz, Question, Option, QuizAttempt, AttemptAnswer # noqa
-from app.models.lesson_completion import LessonCompletion # noqa
-from app.models.certificate import Certificate # noqa
+import app.models  # noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -8,6 +8,7 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
     role: Optional[str] = None
+    organization_id: Optional[int] = None
 
 
 class UserLogin(BaseModel):
@@ -21,6 +22,7 @@ class UserRead(BaseModel):
     full_name: Optional[str] = None
     is_active: bool
     role: str
+    organization_id: Optional[int] = None
 
     model_config = {
         "from_attributes": True,

@@ -12,4 +12,9 @@ from . import submission as submission
 from . import user_badge as user_badge
 from . import badge as badge
 from . import admin_log as admin_log
+from . import notification as notification
+from . import event as event
+from . import comment as comment
+from . import organization as organization
+from . import payment as payment
 

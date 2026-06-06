@@ -16,6 +16,9 @@ def create_course(db: Session, course_in, owner_id: int):
         description=course_in.description,
         cover_image_url=course_in.cover_image_url,
         owner_id=owner_id,
+        price=course_in.price or 0,
+        is_paid=course_in.is_paid,
+        prerequisite_course_id=course_in.prerequisite_course_id,
     )
     db.add(course)
     db.commit()
@@ -27,6 +30,9 @@ def update_course(db: Session, course: Course, course_in):
     course.title = course_in.title
     course.description = course_in.description
     course.cover_image_url = course_in.cover_image_url
+    course.price = course_in.price or 0
+    course.is_paid = course_in.is_paid
+    course.prerequisite_course_id = course_in.prerequisite_course_id
     db.commit()
     db.refresh(course)
     return course
