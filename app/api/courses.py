@@ -37,6 +37,11 @@ def list_courses(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
     return get_courses(db, skip=skip, limit=limit)
 
 
+@router.get("/payments", response_model=list[PaymentRead])
+def my_payments(current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
+    return list_payments_for_user(db, current_user.id)
+
+
 @router.get("/{course_id}", response_model=CourseRead)
 def read_course(course_id: int, db: Session = Depends(get_db)):
     course = get_course(db, course_id)
@@ -125,11 +130,6 @@ def purchase_course(
     if not get_enrollment(db, current_user.id, course_id):
         create_enrollment(db, current_user.id, course_id)
     return payment
-
-
-@router.get("/payments", response_model=list[PaymentRead])
-def my_payments(current_user=Depends(get_current_active_user), db: Session = Depends(get_db)):
-    return list_payments_for_user(db, current_user.id)
 
 
 @router.get("/my/courses", response_model=list[CourseRead])
