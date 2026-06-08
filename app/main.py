@@ -48,7 +48,12 @@ if allowed_hosts:
 # Read origins from environment variable, falling back to localhost if not set
 raw_origins = getattr(settings, "CORS_ALLOWED_ORIGINS", "http://localhost:5173")
 origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
-origins.extend(["http://localhost", "http://127.0.0.1"])
+origins.extend([
+    "http://localhost",
+    "http://127.0.0.1",
+    "https://learnatwill.vercel.app",
+    "https://learnatwill-9vr69ji77-adishc3s-projects.vercel.app",
+])
 
 app.add_middleware(
     CORSMiddleware,
