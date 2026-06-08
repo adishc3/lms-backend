@@ -17,6 +17,7 @@ from app.api.assignments import router as assignments_router
 from app.api.certificates import router as certificates_router
 from app.api.insights import router as insights_router
 from app.api.notifications import router as notifications_router
+from app.api.comments import router as comments_router
 from app.api.badges import router as badges_router
 from app.api.organizations import router as organizations_router
 from app.api.localization import router as localization_router
@@ -86,6 +87,7 @@ app.include_router(assignments_router, prefix="/api")
 app.include_router(certificates_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
+app.include_router(comments_router, prefix="/api")
 app.include_router(badges_router, prefix="/api")
 app.include_router(organizations_router, prefix="/api")
 app.include_router(localization_router, prefix="/api")
