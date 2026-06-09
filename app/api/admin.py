@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_admin
 from app.schemas.user import UserRead, UserUpdate
+from app.schemas.ai import AdminAIInsightRequest, AdminAIInsightResponse
 from app.crud.user import get_user, get_users, update_user
-from app.crud.admin_log import create_admin_log, get_admin_logs
+from app.crud.admin_log import create_admin_log, get_admin_logs, get_system_context_for_ai
+from app.models.user import Role
+from app.core.ai import query_ai
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse
 import csv
 import io
+import json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 templates = Jinja2Templates(directory="templates")
@@ -46,7 +50,20 @@ def edit_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db), 
 @router.get("/logs", response_model=list[dict])
 def list_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     logs = get_admin_logs(db, skip=skip, limit=limit)
-    return [{"id": log.id, "user_id": log.user_id, "action": log.action, "details": log.details, "ip_address": log.ip_address, "created_at": log.created_at} for log in logs]
+    return [
+        {
+            "id": log.id, 
+            "user_id": log.user_id,
+            "user_email": log.user.email if log.user else "Unknown",
+            "user_name": log.user.full_name if log.user else "Unknown",
+            "action": log.action, 
+            "details": log.details, 
+            "ip_address": log.ip_address, 
+            "created_at": log.created_at
+        } 
+        for log in logs
+        if log.user and log.user.role != Role.admin
+    ]
 
 
 @router.post("/users/import-csv")
@@ -85,3 +102,40 @@ def export_users(db: Session = Depends(get_db), current_user=Depends(require_adm
     output.seek(0)
     create_admin_log(db, current_user.id, "export_users", f"count={len(users)}")
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=users.csv"})
+
+
+@router.post("/ai-insights", response_model=AdminAIInsightResponse)
+async def get_ai_insights(request: AdminAIInsightRequest, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    """
+    Get AI-powered insights about system activity, user progress, instructor courses, etc.
+    """
+    try:
+        # Gather system context for AI analysis
+        context = get_system_context_for_ai(db)
+        
+        # Build a simple summary
+        summary = f"""System Statistics:
+- Students: {context['user_statistics']['total_students']}
+- Instructors: {context['user_statistics']['total_instructors']}
+- Courses: {context['course_statistics']['total_courses']}
+- Total Enrollments: {context['enrollment_statistics']['total_enrollments']}
+- Lesson Completions: {context['lesson_completion_statistics']['total_completions']}
+
+Recent Activity:
+{json.dumps(context['recent_activity'][:10], indent=2)}
+
+Based on this data, please answer the admin's question about the system."""
+        
+        # Query AI with context
+        insight = await query_ai(request.query, summary)
+        
+        # Log the request
+        create_admin_log(db, current_user.id, "ai_insight_query", f"query={request.query[:100]}")
+        
+        return AdminAIInsightResponse(insight=insight)
+    except ValueError as e:
+        create_admin_log(db, current_user.id, "ai_insight_error", f"error={str(e)[:100]}")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        create_admin_log(db, current_user.id, "ai_insight_error", f"error={str(e)[:100]}")
+        raise HTTPException(status_code=500, detail=str(e))

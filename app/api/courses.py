@@ -24,6 +24,7 @@ from app.crud.payment import (
     list_payments_for_user,
 )
 from app.crud.notification import create_notification
+from app.crud.admin_log import create_admin_log
 from app.schemas.lesson_completion import LessonCompletionRead
 from app.core.email import send_email
 from app.core.cloudinary_storage import upload_lesson_file
@@ -58,6 +59,7 @@ def create_new_course(course_in: CourseCreate, current_user=Depends(require_inst
     db.add(new_course)
     db.commit()
     db.refresh(new_course)
+    create_admin_log(db, current_user.id, "create_course", f"course_id={new_course.id}, title={new_course.title}")
     return new_course
 
 
@@ -97,6 +99,7 @@ def enroll_course(course_id: int, current_user=Depends(get_current_active_user),
     if get_enrollment(db, current_user.id, course_id):
         return course
     create_enrollment(db, current_user.id, course_id)
+    create_admin_log(db, current_user.id, "enroll_course", f"course_id={course_id}, course_title={course.title}")
     return course
 
 
@@ -129,6 +132,7 @@ def purchase_course(
     payment = complete_payment(db, payment, transaction_reference=payment.transaction_reference)
     if not get_enrollment(db, current_user.id, course_id):
         create_enrollment(db, current_user.id, course_id)
+    create_admin_log(db, current_user.id, "purchase_course", f"course_id={course_id}, course_title={course.title}, amount={course.price}")
     return payment
 
 
@@ -270,6 +274,7 @@ def complete_lesson(
             title=f"Lesson completed: {lesson.title}",
             message=f"You completed '{lesson.title}' in '{course.title}'. Keep learning!",
         )
+        create_admin_log(db, current_user.id, "complete_lesson", f"lesson_id={lesson_id}, lesson_title={lesson.title}, course_id={course_id}")
     return completion
 
 
