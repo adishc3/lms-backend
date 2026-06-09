@@ -59,6 +59,8 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins
     CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,https://learnatwill.vercel.app,https://learnatwill-9vr69ji77-adishc3s-projects.vercel.app"
+    # Optional regex for dynamic origins (for preview deployments on Vercel, etc.)
+    CORS_ALLOWED_ORIGIN_REGEX: str | None = None
 
 
 def _parse_env_list(value: str | None, fallback: list[str]) -> list[str]:

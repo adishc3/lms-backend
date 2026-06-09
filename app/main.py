@@ -54,10 +54,12 @@ origins.extend([
     "https://learnatwill.vercel.app",
     "https://learnatwill-9vr69ji77-adishc3s-projects.vercel.app",
 ])
+allow_origin_regex = getattr(settings, "CORS_ALLOWED_ORIGIN_REGEX", None)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
