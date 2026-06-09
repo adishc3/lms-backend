@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "noreply@example.com"
     EMAIL_ENABLED: bool = False
 
-    AI_ENABLED: bool = False
+    AI_ENABLED: bool = True
     AI_PROVIDER_URL: str | None = None
     AI_API_KEY: str | None = None
     AI_DEFAULT_MODEL: str = "gpt-3.5-turbo"

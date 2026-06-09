@@ -210,8 +210,10 @@ The project uses environment variables for configuration. Copy `.env.example` to
 | `AI_ENABLED` | Enable AI features | `False` |
 | `AI_PROVIDER_URL` | AI service provider URL | *(empty)* |
 | `AI_API_KEY` | AI service API key | *(empty)* |
-| `AI_DEFAULT_MODEL` | Default AI model | `gpt-3.5-turbo` |
+| `AI_DEFAULT_MODEL` | Default AI model | `gemini-text-1` |
 | `AI_TEMPERATURE` | AI model temperature | `0.5` |
+
+- For Google Gemini, use `AI_PROVIDER_URL=https://generativelanguage.googleapis.com/v1beta2/models/gemini-text-1:generateMessage` and `AI_DEFAULT_MODEL=gemini-text-1`.
 | `AI_TIMEOUT_SECONDS` | AI request timeout | `30` |
 | `UPLOAD_FOLDER` | Directory for file uploads | `static/uploads` |
 | `UPLOAD_MAX_SIZE` | Maximum upload size in bytes | `20000000` (20MB) |
