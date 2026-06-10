@@ -7,14 +7,12 @@ from app.crud.user import get_user, get_users, update_user
 from app.crud.admin_log import create_admin_log, get_admin_logs, get_system_context_for_ai
 from app.models.user import Role
 from app.core.ai import query_ai
-from fastapi.templating import Jinja2Templates
 from fastapi.responses import StreamingResponse
 import csv
 import io
 import json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-templates = Jinja2Templates(directory="templates")
 
 
 def log_admin_action(user_id: int, action: str, details: str | None = None, ip_address: str | None = None):
