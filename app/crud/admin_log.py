@@ -36,14 +36,94 @@ def get_system_context_for_ai(db: Session) -> dict:
         
         # Get lesson completion statistics
         total_completions = db.query(LessonCompletion).count()
-        
-        # Get simple list of courses
-        courses_list = db.query(Course.id, Course.title, Course.owner_id).all()
-        courses_data = [
-            {"id": c[0], "title": c[1] or "Untitled", "owner_id": c[2]}
-            for c in courses_list
-        ]
-        
+
+        # Aggregate lesson counts per course
+        lesson_counts_by_course = dict(
+            db.query(Lesson.course_id, func.count(Lesson.id)).group_by(Lesson.course_id).all()
+        )
+
+        # Count enrollments per course
+        enrollment_counts_by_course = dict(
+            db.query(Enrollment.course_id, func.count(Enrollment.id)).group_by(Enrollment.course_id).all()
+        )
+
+        # Count completions per lesson
+        completion_counts_by_lesson = dict(
+            db.query(LessonCompletion.lesson_id, func.count(LessonCompletion.id)).group_by(LessonCompletion.lesson_id).all()
+        )
+
+        # Count completions per user and course
+        course_user_progress_rows = db.query(
+            LessonCompletion.user_id,
+            Lesson.course_id,
+            func.count(LessonCompletion.id).label("completed_lessons")
+        ).join(Lesson, Lesson.id == LessonCompletion.lesson_id)
+        course_user_progress_rows = course_user_progress_rows.group_by(
+            LessonCompletion.user_id,
+            Lesson.course_id
+        ).all()
+
+        students_completed_course = {}
+        student_course_progress = []
+
+        for user_id, course_id, completed_lessons in course_user_progress_rows:
+            total_lessons = lesson_counts_by_course.get(course_id, 0)
+            progress_percent = 0
+            if total_lessons:
+                progress_percent = int((completed_lessons / total_lessons) * 100)
+            if total_lessons and completed_lessons >= total_lessons:
+                students_completed_course[course_id] = students_completed_course.get(course_id, 0) + 1
+            student_course_progress.append({
+                "user_id": user_id,
+                "course_id": course_id,
+                "lessons_completed": completed_lessons,
+                "total_lessons": total_lessons,
+                "progress_percent": progress_percent,
+            })
+
+        # Build course-level summaries including lesson and completion details
+        courses_data = []
+        courses_list = db.query(Course).all()
+        for course in courses_list:
+            total_lessons = lesson_counts_by_course.get(course.id, 0)
+            enrolled_students = enrollment_counts_by_course.get(course.id, 0)
+            completed_students = students_completed_course.get(course.id, 0)
+            course_completions = sum(
+                completion_counts_by_lesson.get(lesson.id, 0)
+                for lesson in course.lessons
+            )
+            average_lessons_completed = 0
+            if enrolled_students:
+                average_lessons_completed = int(course_completions / enrolled_students)
+
+            courses_data.append({
+                "id": course.id,
+                "title": course.title or "Untitled",
+                "description": course.description or "",
+                "owner_id": course.owner_id,
+                "is_paid": bool(course.is_paid),
+                "prerequisite_course_id": course.prerequisite_course_id,
+                "total_lessons": total_lessons,
+                "enrolled_students": enrolled_students,
+                "students_completed_course": completed_students,
+                "total_lesson_completions": course_completions,
+                "average_lessons_completed_per_student": average_lessons_completed,
+                "completion_rate_percent": int((completed_students / enrolled_students) * 100) if enrolled_students else 0,
+            })
+
+        # Lesson-level completion details
+        lesson_statistics = []
+        lesson_rows = db.query(Lesson.id, Lesson.title, Lesson.course_id, Course.title)
+        lesson_rows = lesson_rows.join(Course, Lesson.course_id == Course.id).all()
+        for lesson_id, lesson_title, course_id, course_title in lesson_rows:
+            lesson_statistics.append({
+                "lesson_id": lesson_id,
+                "lesson_title": lesson_title or "Untitled",
+                "course_id": course_id,
+                "course_title": course_title or "Untitled",
+                "completion_count": completion_counts_by_lesson.get(lesson_id, 0),
+            })
+
         # Get simple list of enrollments
         enrollments_list = db.query(Enrollment.id, Enrollment.user_id, Enrollment.course_id).all()
         enrollments_data = [
@@ -81,8 +161,10 @@ def get_system_context_for_ai(db: Session) -> dict:
                 "sample_enrollments": enrollments_data[:50]
             },
             "lesson_completion_statistics": {
-                "total_completions": total_completions
+                "total_completions": total_completions,
+                "lesson_statistics": lesson_statistics[:100]
             },
+            "student_course_progress": student_course_progress[:100],
             "recent_activity": recent_activity
         }
         
@@ -93,7 +175,8 @@ def get_system_context_for_ai(db: Session) -> dict:
             "user_statistics": {"total_students": 0, "total_instructors": 0},
             "course_statistics": {"total_courses": 0, "courses": []},
             "enrollment_statistics": {"total_enrollments": 0, "sample_enrollments": []},
-            "lesson_completion_statistics": {"total_completions": 0},
+            "lesson_completion_statistics": {"total_completions": 0, "lesson_statistics": []},
+            "student_course_progress": [],
             "recent_activity": [],
             "error": str(e)
         }

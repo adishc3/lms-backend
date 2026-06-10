@@ -119,6 +119,15 @@ async def get_ai_insights(request: AdminAIInsightRequest, db: Session = Depends(
 - Total Enrollments: {context['enrollment_statistics']['total_enrollments']}
 - Lesson Completions: {context['lesson_completion_statistics']['total_completions']}
 
+Top Courses:
+{json.dumps(context['course_statistics']['courses'][:10], indent=2)}
+
+Lesson Completion Summaries:
+{json.dumps(context['lesson_completion_statistics']['lesson_statistics'][:20], indent=2)}
+
+Student Course Progress Samples:
+{json.dumps(context['student_course_progress'][:20], indent=2)}
+
 Recent Activity:
 {json.dumps(context['recent_activity'][:10], indent=2)}
 
