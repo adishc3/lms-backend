@@ -16,8 +16,11 @@ def create_admin_log(db: Session, user_id: int, action: str, details: str | None
     return log
 
 
-def get_admin_logs(db: Session, skip: int = 0, limit: int = 50) -> list[AdminLog]:
-    return db.query(AdminLog).order_by(AdminLog.created_at.desc()).offset(skip).limit(limit).all()
+def get_admin_logs(db: Session, skip: int = 0, limit: int | None = None) -> list[AdminLog]:
+    query = db.query(AdminLog).order_by(AdminLog.created_at.desc()).offset(skip)
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
 
 
 def get_system_context_for_ai(db: Session) -> dict:
@@ -131,21 +134,26 @@ def get_system_context_for_ai(db: Session) -> dict:
             for e in enrollments_list
         ]
         
-        # Get activity logs
-        recent_logs = get_admin_logs(db, skip=0, limit=50)
-        recent_activity = []
+        # Get activity logs (include all historical and current entries)
+        activity_logs = get_admin_logs(db, skip=0, limit=None)
+        activity_log = []
         try:
-            for log in recent_logs:
-                if log.user and log.user.role != Role.admin:
-                    recent_activity.append({
-                        "action": log.action,
-                        "user_name": log.user.full_name or "Unknown",
-                        "user_email": log.user.email or "Unknown",
-                        "details": log.details or "",
-                        "timestamp": str(log.created_at) if log.created_at else ""
-                    })
+            for log in activity_logs:
+                if not log.user or log.user.role == Role.admin:
+                    continue
+                activity_log.append({
+                    "id": log.id,
+                    "action": log.action,
+                    "details": log.details or "",
+                    "ip_address": log.ip_address or "",
+                    "timestamp": str(log.created_at) if log.created_at else "",
+                    "user_id": log.user_id,
+                    "user_email": log.user.email,
+                    "user_name": log.user.full_name,
+                    "user_role": log.user.role.value,
+                })
         except Exception as e:
-            recent_activity = [{"error": str(e)}]
+            activity_log = [{"error": str(e)}]
         
         context = {
             "user_statistics": {
@@ -165,7 +173,8 @@ def get_system_context_for_ai(db: Session) -> dict:
                 "lesson_statistics": lesson_statistics[:100]
             },
             "student_course_progress": student_course_progress[:100],
-            "recent_activity": recent_activity
+            "activity_log": activity_log,
+            "recent_activity": activity_log[:50]
         }
         
         return context
@@ -177,6 +186,7 @@ def get_system_context_for_ai(db: Session) -> dict:
             "enrollment_statistics": {"total_enrollments": 0, "sample_enrollments": []},
             "lesson_completion_statistics": {"total_completions": 0, "lesson_statistics": []},
             "student_course_progress": [],
+            "activity_log": [],
             "recent_activity": [],
             "error": str(e)
         }

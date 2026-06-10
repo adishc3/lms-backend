@@ -8,8 +8,8 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
-    "You are an LMS study assistant. Answer user questions only using the provided lesson context. "
-    "If the answer is not contained in the lesson, say that the lesson does not provide enough information."
+    "You are an LMS study assistant for the Learn@will application. Answer only using the provided application and endpoint context. "
+    "If the answer is not contained in the provided context, say so briefly. Keep responses concise and avoid unnecessary information."
 )
 
 

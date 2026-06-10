@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_admin
 from app.schemas.user import UserRead, UserUpdate
@@ -13,6 +14,21 @@ import io
 import json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def get_api_route_summary(app) -> str:
+    routes = []
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        if route.path in {"/openapi.json", "/docs", "/redoc", "/favicon.ico"}:
+            continue
+        methods = sorted([m for m in route.methods if m not in {"HEAD", "OPTIONS"}])
+        if not methods:
+            continue
+        title = route.summary or route.description or route.name or route.path
+        routes.append(f"{','.join(methods)} {route.path} — {title}")
+    return "\n".join(sorted(routes))
 
 
 def log_admin_action(user_id: int, action: str, details: str | None = None, ip_address: str | None = None):
@@ -46,19 +62,20 @@ def edit_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db), 
 
 
 @router.get("/logs", response_model=list[dict])
-def list_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+def list_logs(skip: int = 0, limit: int | None = None, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     logs = get_admin_logs(db, skip=skip, limit=limit)
     return [
         {
-            "id": log.id, 
+            "id": log.id,
             "user_id": log.user_id,
             "user_email": log.user.email if log.user else "Unknown",
             "user_name": log.user.full_name if log.user else "Unknown",
-            "action": log.action, 
-            "details": log.details, 
-            "ip_address": log.ip_address, 
-            "created_at": log.created_at
-        } 
+            "user_role": log.user.role.value if log.user else "Unknown",
+            "action": log.action,
+            "details": log.details,
+            "ip_address": log.ip_address,
+            "created_at": log.created_at,
+        }
         for log in logs
         if log.user and log.user.role != Role.admin
     ]
@@ -103,13 +120,14 @@ def export_users(db: Session = Depends(get_db), current_user=Depends(require_adm
 
 
 @router.post("/ai-insights", response_model=AdminAIInsightResponse)
-async def get_ai_insights(request: AdminAIInsightRequest, db: Session = Depends(get_db), current_user=Depends(require_admin)):
+async def get_ai_insights(request: Request, request_body: AdminAIInsightRequest, db: Session = Depends(get_db), current_user=Depends(require_admin)):
     """
     Get AI-powered insights about system activity, user progress, instructor courses, etc.
     """
     try:
         # Gather system context for AI analysis
         context = get_system_context_for_ai(db)
+        api_routes = get_api_route_summary(request.app)
         
         # Build a simple summary
         summary = f"""System Statistics:
@@ -118,6 +136,9 @@ async def get_ai_insights(request: AdminAIInsightRequest, db: Session = Depends(
 - Courses: {context['course_statistics']['total_courses']}
 - Total Enrollments: {context['enrollment_statistics']['total_enrollments']}
 - Lesson Completions: {context['lesson_completion_statistics']['total_completions']}
+
+Available API Endpoints:
+{api_routes}
 
 Top Courses:
 {json.dumps(context['course_statistics']['courses'][:10], indent=2)}
@@ -128,10 +149,18 @@ Lesson Completion Summaries:
 Student Course Progress Samples:
 {json.dumps(context['student_course_progress'][:20], indent=2)}
 
-Recent Activity:
-{json.dumps(context['recent_activity'][:10], indent=2)}
+Activity Log (most recent 50 entries):
+{json.dumps(context['activity_log'][:50], indent=2)}
 
-Based on this data, please answer the admin's question about the system."""
+Please answer the admin's question using only the provided application context and endpoint information. Keep the response concise and avoid unnecessary details."""
+        
+        # Query AI with context
+        insight = await query_ai(request_body.query, summary)
+        
+        # Log the request
+        create_admin_log(db, current_user.id, "ai_insight_query", f"query={request_body.query[:100]}")
+        
+        return AdminAIInsightResponse(insight=insight)
         
         # Query AI with context
         insight = await query_ai(request.query, summary)
