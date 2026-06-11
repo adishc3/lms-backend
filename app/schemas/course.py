@@ -22,6 +22,7 @@ class CourseRead(CourseBase):
     is_paid: bool
     prerequisite_course_id: Optional[int] = None
     cover_image_url: Optional[str] = None
+    total_lessons: int = 0
 
     model_config = {
         "from_attributes": True,

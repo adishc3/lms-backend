@@ -24,3 +24,7 @@ class Course(Base):
     quizzes = relationship("Quiz", back_populates="course", cascade="all, delete-orphan")
     events = relationship("Event", back_populates="course", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="course", cascade="all, delete-orphan")
+
+    @property
+    def total_lessons(self):
+        return len(self.lessons or [])

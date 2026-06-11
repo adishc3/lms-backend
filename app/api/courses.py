@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_instructor, get_current_active_user
 from app.schemas.course import CourseCreate, CourseRead
 from app.schemas.lesson import LessonCreate, LessonRead, LessonUpdate
+from app.schemas.ai import AICourseGeneratorRequest, AICourseGeneratorResponse
 from app.schemas.event import EventCreate, EventRead
 from app.schemas.payment import PaymentCreate, PaymentRead
 from app.crud.course import get_course, get_courses, update_course, delete_course
@@ -25,9 +26,11 @@ from app.crud.payment import (
 )
 from app.crud.notification import create_notification
 from app.crud.admin_log import create_admin_log
+from app.crud.ai import create_ai_usage
 from app.schemas.lesson_completion import LessonCompletionRead
 from app.core.email import send_email
 from app.core.cloudinary_storage import upload_lesson_file
+from app.core.ai import generate_course_structure
 from app import models
 
 router = APIRouter(prefix="/courses", tags=["courses"])
@@ -444,3 +447,97 @@ def delete_lesson_asset(
     db.refresh(lesson)
 
     return lesson
+
+
+@router.post("/ai-generate/structure", response_model=AICourseGeneratorResponse)
+async def generate_course_with_ai(
+    request: AICourseGeneratorRequest,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    """Generate a complete course structure with syllabus and lessons using AI."""
+    try:
+        course_structure = await generate_course_structure(
+            title=request.title,
+            description=request.description,
+            level=request.level,
+            duration_weeks=request.duration_weeks,
+            num_lessons=request.num_lessons,
+        )
+        
+        # Log AI usage
+        create_ai_usage(
+            db,
+            user_id=current_user.id,
+            feature="course_generator",
+            prompt=f"Generate course: {request.title} ({request.level}, {request.num_lessons} lessons)",
+            response=str(course_structure),
+        )
+        
+        return AICourseGeneratorResponse(**course_structure)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating course: {str(e)}")
+
+
+@router.post("/ai-generate/create", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
+async def create_course_from_ai_structure(
+    request: AICourseGeneratorRequest,
+    current_user=Depends(require_instructor),
+    db: Session = Depends(get_db),
+):
+    """Generate a complete course structure with AI and create it immediately."""
+    try:
+        # Generate the course structure
+        course_structure = await generate_course_structure(
+            title=request.title,
+            description=request.description,
+            level=request.level,
+            duration_weeks=request.duration_weeks,
+            num_lessons=request.num_lessons,
+        )
+        
+        # Create the course
+        new_course = models.course.Course(
+            title=course_structure.get("course_title", request.title),
+            description=course_structure.get("course_description", request.description),
+            owner_id=current_user.id,
+        )
+        db.add(new_course)
+        db.commit()
+        db.refresh(new_course)
+        
+        # Create lessons from the generated structure
+        lessons = course_structure.get("lessons", [])
+        for lesson_data in sorted(lessons, key=lambda x: x.get("order", 0)):
+            lesson = create_lesson(
+                db,
+                LessonCreate(
+                    title=lesson_data.get("title", f"Lesson {lesson_data.get('order', 1)}"),
+                    content=lesson_data.get("content", ""),
+                ),
+                course_id=new_course.id,
+            )
+        
+        # Log the AI-generated course creation
+        create_admin_log(
+            db,
+            current_user.id,
+            "create_course_with_ai",
+            f"course_id={new_course.id}, title={new_course.title}, lessons_count={len(lessons)}",
+        )
+        
+        create_ai_usage(
+            db,
+            user_id=current_user.id,
+            feature="course_generator_create",
+            prompt=f"Create course: {request.title}",
+            response=f"Created course with {len(lessons)} lessons",
+        )
+        
+        return new_course
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating course: {str(e)}")

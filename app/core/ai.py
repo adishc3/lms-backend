@@ -225,3 +225,55 @@ async def generate_quiz(context: str, question_count: int) -> str:
         "Return the quiz in a clear text format."
     )
     return await query_ai(prompt, context)
+
+
+async def generate_course_structure(title: str, description: str, level: str, duration_weeks: int, num_lessons: int) -> dict:
+    """Generate a complete course structure with syllabus and lesson plans using AI."""
+    
+    context = f"""
+Course Title: {title}
+Course Description: {description}
+Level: {level}
+Duration: {duration_weeks} weeks
+Target Lessons: {num_lessons}
+"""
+    
+    prompt = f"""Create a detailed course structure for a {level} level course with {num_lessons} lessons over {duration_weeks} weeks.
+    
+Return the response as JSON with this exact format:
+{{
+    "course_title": "Course title here",
+    "course_description": "Updated course description",
+    "syllabus": "A comprehensive syllabus with learning objectives and outcomes",
+    "lessons": [
+        {{"title": "Lesson 1 Title", "content": "Detailed lesson content and learning objectives", "order": 1}},
+        {{"title": "Lesson 2 Title", "content": "Detailed lesson content and learning objectives", "order": 2}}
+    ]
+}}
+
+Make sure:
+1. The syllabus is comprehensive with clear learning outcomes
+2. Each lesson has a clear title and detailed content
+3. Lessons are ordered sequentially
+4. Content is appropriate for the {level} level
+5. Total lessons matches {num_lessons}
+6. The course naturally fits within {duration_weeks} weeks
+"""
+    
+    response_text = await query_ai(prompt, context)
+    
+    # Parse JSON response
+    import json
+    try:
+        # Try to extract JSON from the response (in case there's extra text)
+        json_start = response_text.find('{')
+        json_end = response_text.rfind('}') + 1
+        if json_start != -1 and json_end > json_start:
+            json_str = response_text[json_start:json_end]
+            course_data = json.loads(json_str)
+            return course_data
+        else:
+            raise json.JSONDecodeError("No JSON found", response_text, 0)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse AI course generation response: {response_text}")
+        raise ValueError(f"AI generated invalid course structure: {str(e)}")

@@ -132,3 +132,40 @@ def test_student_my_enrolled_courses(client):
     )
     assert courses.status_code == 200
     assert courses.json() == []
+
+
+def test_course_list_includes_total_lessons(client):
+    instructor = register(client, "instructor_total_lessons@example.com", "strongpass", role="instructor")
+    assert instructor.status_code == 200
+    token = login(client, "instructor_total_lessons@example.com", "strongpass").json()["access_token"]
+
+    course_no_lessons = client.post(
+        "/courses/",
+        json={"title": "Empty Course", "description": "No lessons yet"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert course_no_lessons.status_code == 201
+    course_no_lessons_id = course_no_lessons.json()["id"]
+
+    course_with_lessons = client.post(
+        "/courses/",
+        json={"title": "Lesson Course", "description": "Has lessons"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert course_with_lessons.status_code == 201
+    course_with_lessons_id = course_with_lessons.json()["id"]
+
+    lesson = client.post(
+        f"/courses/{course_with_lessons_id}/lessons",
+        json={"title": "First Lesson", "content": "Lesson content"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert lesson.status_code == 201
+
+    course_list = client.get("/courses/")
+    assert course_list.status_code == 200
+    payload = course_list.json()
+
+    assert any(c["id"] == course_no_lessons_id and c["total_lessons"] == 0 for c in payload)
+    assert any(c["id"] == course_with_lessons_id and c["total_lessons"] == 1 for c in payload)
+    assert sum(1 for c in payload if c["total_lessons"] == 0) == 1
