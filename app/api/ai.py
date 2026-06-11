@@ -37,8 +37,17 @@ async def study_assistant(request: AIStudyRequest, current_user=Depends(get_curr
 
     context = f"Lesson title: {lesson.title}\n\n{lesson.content}"
     prompt = request.question
+    
+    # Use course-specific system prompt if available
+    course_system_prompt = (course.ai_system_prompt or "").strip()
+    if not course_system_prompt:
+        course_system_prompt = (
+            f"You are an AI tutor for {course.title}. Help students understand only the course material provided. "
+            f"Answer only questions about {course.title}. Do not provide outside information."
+        )
+    
     try:
-        answer = await query_ai(prompt, context)
+        answer = await query_ai(prompt, context, system_prompt=course_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -79,16 +88,16 @@ async def ai_chat(request: AIChatRequest, current_user=Depends(get_current_activ
     if selected_lesson:
         context += f"\n\nSelected lesson title: {selected_lesson.title}\n{selected_lesson.content}"
 
-    prompt = (
-        "You are an AI tutor helping a student understand course material. Use only the given course and lesson context. "
-        "If the question refers to a topic or concept, identify the most relevant lesson and mention it by title. "
-        "If a specific lesson is selected, answer based on that lesson. "
-        "Do not invent other sources.\n\n"
-        f"Student question: {request.question}"
-    )
+    # Use course-specific system prompt if available
+    course_system_prompt = (course.ai_system_prompt or "").strip()
+    if not course_system_prompt:
+        course_system_prompt = (
+            f"You are an AI tutor for {course.title}. Answer only questions related to this course. "
+            f"Use only the provided course material about {course.title}. Do not provide external knowledge."
+        )
 
     try:
-        answer = await query_ai(prompt, context)
+        answer = await query_ai(request.question, context, system_prompt=course_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -116,8 +125,15 @@ async def quiz_generator(request: AIQuizRequest, current_user=Depends(get_curren
     ensure_course_access(course, current_user, db)
 
     context = f"Lesson title: {lesson.title}\n\n{lesson.content}"
+    
+    # Build quiz-specific system prompt
+    quiz_system_prompt = (
+        f"Generate quiz questions only from the {course.title} course material provided. "
+        f"Do not create questions outside {course.title} content."
+    )
+    
     try:
-        quiz_text = await generate_quiz(context, request.question_count)
+        quiz_text = await generate_quiz(context, request.question_count, system_prompt=quiz_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 

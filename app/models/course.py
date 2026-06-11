@@ -16,6 +16,7 @@ class Course(Base):
     price = Column(Integer, nullable=True, default=0)
     is_paid = Column(Boolean, default=False, nullable=False)
     prerequisite_course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
+    ai_system_prompt = Column(Text, nullable=True)
 
     owner = relationship("User", back_populates="owned_courses")
     prerequisite_course = relationship("Course", remote_side=[id], backref="dependent_courses")

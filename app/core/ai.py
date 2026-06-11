@@ -66,6 +66,19 @@ def _extract_text_from_parts(parts) -> str:
 
 
 def _extract_ai_text_response(data: dict) -> str:
+    # Check for error responses first
+    if isinstance(data, dict):
+        if "error" in data:
+            error_detail = data.get("error", {})
+            if isinstance(error_detail, dict):
+                error_msg = error_detail.get("message", str(error_detail))
+            else:
+                error_msg = str(error_detail)
+            raise ValueError(f"AI provider error: {error_msg}")
+        
+        if "errors" in data and isinstance(data["errors"], list) and data["errors"]:
+            raise ValueError(f"AI provider errors: {data['errors']}")
+    
     if "choices" in data and data["choices"]:
         message = data["choices"][0].get("message", {})
         if isinstance(message, dict):
@@ -103,9 +116,13 @@ def _extract_ai_text_response(data: dict) -> str:
     return ""
 
 
-def _build_request_payload(prompt: str, context: str, url: str | None = None) -> dict:
-    full_text = f"{context}\n\nQuestion: {prompt}"
+def _build_request_payload(prompt: str, context: str, url: str | None = None, system_prompt: str | None = None) -> dict:
     url = url or settings.AI_PROVIDER_URL
+    system_prompt_text = system_prompt or SYSTEM_PROMPT
+    
+    # Build the full message with system prompt integrated
+    full_text = f"{system_prompt_text}\n\n{context}\n\nQuestion: {prompt}"
+    
     if _is_google_provider(url):
         endpoint_type = _google_endpoint_type(url)
         if endpoint_type == "content":
@@ -125,10 +142,6 @@ def _build_request_payload(prompt: str, context: str, url: str | None = None) ->
                 "temperature": settings.AI_TEMPERATURE,
                 "messages": [
                     {
-                        "author": "system",
-                        "content": [{"type": "text", "text": SYSTEM_PROMPT}],
-                    },
-                    {
                         "author": "user",
                         "content": [{"type": "text", "text": full_text}],
                     },
@@ -138,14 +151,14 @@ def _build_request_payload(prompt: str, context: str, url: str | None = None) ->
     return {
         "model": settings.AI_DEFAULT_MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": full_text},
+            {"role": "system", "content": system_prompt_text},
+            {"role": "user", "content": f"{context}\n\nQuestion: {prompt}"},
         ],
         "temperature": settings.AI_TEMPERATURE,
     }
 
 
-async def query_ai(prompt: str, context: str) -> str:
+async def query_ai(prompt: str, context: str, system_prompt: str | None = None) -> str:
     if not settings.AI_PROVIDER_URL:
         raise ValueError("AI is not configured. Set AI_PROVIDER_URL.")
 
@@ -161,14 +174,19 @@ async def query_ai(prompt: str, context: str) -> str:
     max_retries = 5
     for attempt in range(max_retries):
         try:
-            payload = _build_request_payload(prompt, context, url)
+            payload = _build_request_payload(prompt, context, url, system_prompt)
             async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 
                 # Check if successful
                 if response.status_code == 200:
-                    data = response.json()
-                    logger.debug("AI raw response: %s", data)
+                    try:
+                        data = response.json()
+                        logger.debug("AI raw response: %s", data)
+                    except Exception as json_err:
+                        logger.error(f"Failed to parse AI response as JSON: {json_err}. Response text: {response.text[:500]}")
+                        raise ValueError(f"AI provider returned invalid JSON: {response.text[:200]}")
+                    
                     result = _extract_ai_text_response(data)
                     if result:
                         return result
@@ -179,7 +197,7 @@ async def query_ai(prompt: str, context: str) -> str:
                     try:
                         error_data = response.json()
                         error_msg = error_data.get("error", {}).get("message", response.text)
-                    except ValueError:
+                    except Exception:
                         error_msg = response.text
                     logger.error(f"AI provider rate limit error {response.status_code}: {error_msg}")
                     raise ValueError(f"AI provider rate limit exceeded: {error_msg}")
@@ -218,13 +236,13 @@ async def query_ai(prompt: str, context: str) -> str:
     raise ValueError("AI provider unavailable after multiple attempts. Please try again later.")
 
 
-async def generate_quiz(context: str, question_count: int) -> str:
+async def generate_quiz(context: str, question_count: int, system_prompt: str | None = None) -> str:
     prompt = (
         f"Create {question_count} multiple-choice quiz questions based on the lesson below. "
         "For each question, provide four answer options and mark the correct one. "
         "Return the quiz in a clear text format."
     )
-    return await query_ai(prompt, context)
+    return await query_ai(prompt, context, system_prompt=system_prompt)
 
 
 async def generate_course_structure(title: str, description: str, level: str, duration_weeks: int, num_lessons: int) -> dict:

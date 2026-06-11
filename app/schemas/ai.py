@@ -29,6 +29,10 @@ class AIChatResponse(BaseModel):
     answer: str
 
 
+class AdminCoursePromptUpdate(BaseModel):
+    ai_system_prompt: str | None = None
+
+
 class AdminAIInsightRequest(BaseModel):
     query: str
 

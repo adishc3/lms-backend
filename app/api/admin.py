@@ -3,8 +3,9 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_admin
 from app.schemas.user import UserRead, UserUpdate
-from app.schemas.ai import AdminAIInsightRequest, AdminAIInsightResponse
+from app.schemas.ai import AdminAIInsightRequest, AdminAIInsightResponse, AdminCoursePromptUpdate
 from app.crud.user import get_user, get_users, update_user
+from app.crud.course import get_course, update_course
 from app.crud.admin_log import create_admin_log, get_admin_logs, get_system_context_for_ai
 from app.models.user import Role
 from app.core.ai import query_ai
@@ -175,3 +176,40 @@ Please answer the admin's question using only the provided application context a
     except Exception as e:
         create_admin_log(db, current_user.id, "ai_insight_error", f"error={str(e)[:100]}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/courses", tags=["admin"])
+def list_courses(db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    """List all courses for admin management"""
+    from app.crud.course import get_courses
+    courses = get_courses(db)
+    return courses
+
+
+@router.put("/courses/{course_id}/ai-prompt", tags=["admin"])
+def update_course_ai_prompt(
+    course_id: int,
+    prompt_update: AdminCoursePromptUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin)
+):
+    """Update the AI system prompt for a specific course"""
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    # Update the course's AI system prompt
+    course.ai_system_prompt = prompt_update.ai_system_prompt
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    
+    # Log the action
+    create_admin_log(
+        db,
+        current_user.id,
+        "update_course_ai_prompt",
+        f"course_id={course_id}, prompt_length={len(prompt_update.ai_system_prompt or '')}"
+    )
+    
+    return {"message": "Course AI prompt updated successfully", "course_id": course_id}
