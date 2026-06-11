@@ -37,6 +37,10 @@ class AdminAIInsightResponse(BaseModel):
     insight: str
 
 
+class AdminCoursePromptUpdate(BaseModel):
+    ai_system_prompt: str | None = None
+
+
 class AICourseGeneratorRequest(BaseModel):
     title: str
     description: str

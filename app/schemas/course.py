@@ -5,6 +5,7 @@ from typing import Optional
 class CourseBase(BaseModel):
     title: str
     description: Optional[str] = None
+    ai_system_prompt: Optional[str] = None
     cover_image_url: Optional[str] = None
     price: int = 0
     is_paid: bool = False

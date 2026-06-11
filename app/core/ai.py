@@ -41,7 +41,7 @@ def _alternate_google_url(url: str) -> str:
     if ":generateText" in url:
         return url.replace(":generateText", ":generateMessage")
     if ":generateMessage" in url:
-        return url.replace(":generateMessage", ":generateContent")
+        return url.replace(":generateMessage", ":generateText")
     return url
 
 
@@ -103,21 +103,26 @@ def _extract_ai_text_response(data: dict) -> str:
     return ""
 
 
-def _build_request_payload(prompt: str, context: str, url: str | None = None) -> dict:
-    full_text = f"{context}\n\nQuestion: {prompt}"
+def _build_request_payload(prompt: str, context: str, url: str | None = None, system_prompt: str | None = None) -> dict:
+    base_text = f"{context}\n\nQuestion: {prompt}"
     url = url or settings.AI_PROVIDER_URL
+    system_prompt_text = system_prompt.strip() if system_prompt else SYSTEM_PROMPT
     if _is_google_provider(url):
         endpoint_type = _google_endpoint_type(url)
         if endpoint_type == "content":
+            full_text = f"{system_prompt_text}\n\n{base_text}" if system_prompt else base_text
             return {
                 "contents": [
                     {"role": "user", "parts": [{"text": full_text}]}
                 ],
+                "temperature": settings.AI_TEMPERATURE,
                 "generationConfig": {"temperature": settings.AI_TEMPERATURE},
             }
         elif endpoint_type == "text":
+            full_text = f"{system_prompt_text}\n\n{base_text}" if system_prompt else base_text
             return {
                 "prompt": {"text": full_text},
+                "temperature": settings.AI_TEMPERATURE,
                 "generationConfig": {"temperature": settings.AI_TEMPERATURE},
             }
         else:  # message
@@ -126,11 +131,11 @@ def _build_request_payload(prompt: str, context: str, url: str | None = None) ->
                 "messages": [
                     {
                         "author": "system",
-                        "content": [{"type": "text", "text": SYSTEM_PROMPT}],
+                        "content": [{"type": "text", "text": system_prompt_text}],
                     },
                     {
                         "author": "user",
-                        "content": [{"type": "text", "text": full_text}],
+                        "content": [{"type": "text", "text": base_text}],
                     },
                 ],
             }
@@ -138,14 +143,14 @@ def _build_request_payload(prompt: str, context: str, url: str | None = None) ->
     return {
         "model": settings.AI_DEFAULT_MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": full_text},
+            {"role": "system", "content": system_prompt_text},
+            {"role": "user", "content": base_text},
         ],
         "temperature": settings.AI_TEMPERATURE,
     }
 
 
-async def query_ai(prompt: str, context: str) -> str:
+async def query_ai(prompt: str, context: str, system_prompt: str | None = None) -> str:
     if not settings.AI_PROVIDER_URL:
         raise ValueError("AI is not configured. Set AI_PROVIDER_URL.")
 
@@ -161,7 +166,7 @@ async def query_ai(prompt: str, context: str) -> str:
     max_retries = 5
     for attempt in range(max_retries):
         try:
-            payload = _build_request_payload(prompt, context, url)
+            payload = _build_request_payload(prompt, context, url, system_prompt)
             async with httpx.AsyncClient(timeout=settings.AI_TIMEOUT_SECONDS) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 
@@ -218,13 +223,13 @@ async def query_ai(prompt: str, context: str) -> str:
     raise ValueError("AI provider unavailable after multiple attempts. Please try again later.")
 
 
-async def generate_quiz(context: str, question_count: int) -> str:
+async def generate_quiz(context: str, question_count: int, system_prompt: str | None = None) -> str:
     prompt = (
         f"Create {question_count} multiple-choice quiz questions based on the lesson below. "
         "For each question, provide four answer options and mark the correct one. "
         "Return the quiz in a clear text format."
     )
-    return await query_ai(prompt, context)
+    return await query_ai(prompt, context, system_prompt=system_prompt)
 
 
 async def generate_course_structure(title: str, description: str, level: str, duration_weeks: int, num_lessons: int) -> dict:

@@ -14,6 +14,7 @@ def create_course(db: Session, course_in, owner_id: int):
     course = Course(
         title=course_in.title,
         description=course_in.description,
+        ai_system_prompt=course_in.ai_system_prompt,
         cover_image_url=course_in.cover_image_url,
         owner_id=owner_id,
         price=course_in.price or 0,
@@ -29,6 +30,7 @@ def create_course(db: Session, course_in, owner_id: int):
 def update_course(db: Session, course: Course, course_in):
     course.title = course_in.title
     course.description = course_in.description
+    course.ai_system_prompt = course_in.ai_system_prompt
     course.cover_image_url = course_in.cover_image_url
     course.price = course_in.price or 0
     course.is_paid = course_in.is_paid

@@ -3,8 +3,10 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_admin
 from app.schemas.user import UserRead, UserUpdate
-from app.schemas.ai import AdminAIInsightRequest, AdminAIInsightResponse
+from app.schemas.ai import AdminAIInsightRequest, AdminAIInsightResponse, AdminCoursePromptUpdate
+from app.schemas.course import CourseRead
 from app.crud.user import get_user, get_users, update_user
+from app.crud.course import get_course, get_courses
 from app.crud.admin_log import create_admin_log, get_admin_logs, get_system_context_for_ai
 from app.models.user import Role
 from app.core.ai import query_ai
@@ -79,6 +81,30 @@ def list_logs(skip: int = 0, limit: int | None = None, db: Session = Depends(get
         for log in logs
         if log.user and log.user.role != Role.admin
     ]
+
+
+@router.get("/courses", response_model=list[CourseRead])
+def list_courses(db: Session = Depends(get_db), current_user=Depends(require_admin)):
+    create_admin_log(db, current_user.id, "list_courses")
+    return get_courses(db)
+
+
+@router.put("/courses/{course_id}/ai-prompt", response_model=CourseRead)
+def update_course_ai_prompt(
+    course_id: int,
+    prompt_update: AdminCoursePromptUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin),
+):
+    course = get_course(db, course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    course.ai_system_prompt = prompt_update.ai_system_prompt
+    db.commit()
+    db.refresh(course)
+    create_admin_log(db, current_user.id, "update_course_ai_prompt", f"course_id={course_id}")
+    return course
 
 
 @router.post("/users/import-csv")

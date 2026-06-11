@@ -8,6 +8,7 @@ class Course(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
+    ai_system_prompt = Column(Text, nullable=True)
     cover_image_url = Column(String(1024), nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"))
     duration = Column(String(80), nullable=True)

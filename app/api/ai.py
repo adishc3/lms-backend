@@ -37,8 +37,20 @@ async def study_assistant(request: AIStudyRequest, current_user=Depends(get_curr
 
     context = f"Lesson title: {lesson.title}\n\n{lesson.content}"
     prompt = request.question
+    
+    # Use course-specific system prompt if available
+    course_system_prompt = (course.ai_system_prompt or "").strip()
+    if not course_system_prompt:
+        course_system_prompt = (
+            f\"You are an AI tutor specifically for the '{course.title}' course. \"
+            \"Your role is to help students understand ONLY the material covered in this course. \"
+            \"Use ONLY the lesson content provided below. \"
+            \"If a question is not related to the course material, politely explain that you can only help with questions related to this course. \"
+            \"Do not provide general knowledge or information from outside this course.\"
+        )
+    
     try:
-        answer = await query_ai(prompt, context)
+        answer = await query_ai(prompt, context, system_prompt=course_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -79,16 +91,18 @@ async def ai_chat(request: AIChatRequest, current_user=Depends(get_current_activ
     if selected_lesson:
         context += f"\n\nSelected lesson title: {selected_lesson.title}\n{selected_lesson.content}"
 
-    prompt = (
-        "You are an AI tutor helping a student understand course material. Use only the given course and lesson context. "
-        "If the question refers to a topic or concept, identify the most relevant lesson and mention it by title. "
-        "If a specific lesson is selected, answer based on that lesson. "
-        "Do not invent other sources.\n\n"
-        f"Student question: {request.question}"
-    )
+    course_system_prompt = (course.ai_system_prompt or "").strip()
+    if not course_system_prompt:
+        course_system_prompt = (
+            f\"You are an AI tutor specifically for the '{course.title}' course. \"
+            \"IMPORTANT: You can ONLY answer questions about the course material provided below. \"
+            \"If a question is not related to this course or its lessons, respond with: 'I can only help with questions related to this course. Please ask something about [course topic].' \"
+            \"Always cite which lesson the answer comes from. \"
+            \"Do NOT provide external knowledge or information from other sources.\"
+        )
 
     try:
-        answer = await query_ai(prompt, context)
+        answer = await query_ai(request.question, context, system_prompt=course_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
@@ -116,8 +130,17 @@ async def quiz_generator(request: AIQuizRequest, current_user=Depends(get_curren
     ensure_course_access(course, current_user, db)
 
     context = f"Lesson title: {lesson.title}\n\n{lesson.content}"
+    
+    # Build quiz-specific system prompt
+    quiz_system_prompt = (
+        f\"You are an expert quiz generator for the '{course.title}' course. \"
+        \"Create multiple-choice quiz questions based ONLY on the lesson content provided. \"
+        \"Each question should test student understanding of the course material. \"
+        \"Do not create questions about topics outside this lesson or course.\"
+    )
+    
     try:
-        quiz_text = await generate_quiz(context, request.question_count)
+        quiz_text = await generate_quiz(context, request.question_count, system_prompt=quiz_system_prompt)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
