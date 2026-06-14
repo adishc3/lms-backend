@@ -72,7 +72,7 @@ def _parse_env_list(value: str | None, fallback: list[str]) -> list[str]:
 settings = Settings()
 
 if not settings.DATABASE_URL:
-    settings.DATABASE_URL = "mysql+pymysql://root:password@db:3306/lms"
+    settings.DATABASE_URL = "postgresql://postgres:password@db:5432/lms"
 
 ALLOWED_ORIGINS: list[str] = [origin.strip() for origin in settings.CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
 
