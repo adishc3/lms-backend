@@ -53,6 +53,7 @@ origins.extend([
     "http://127.0.0.1",
     "https://learnatwill.vercel.app",
     "https://learnatwill-9vr69ji77-adishc3s-projects.vercel.app",
+    "https://learnatwill.onrender.com",
 ])
 allow_origin_regex = getattr(settings, "CORS_ALLOWED_ORIGIN_REGEX", None)
 
