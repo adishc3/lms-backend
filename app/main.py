@@ -42,6 +42,11 @@ app.add_middleware(GZipMiddleware, minimum_size=settings.GZIP_MIN_SIZE)
 if settings.FORCE_HTTPS:
     app.add_middleware(HTTPSRedirectMiddleware)
 allowed_hosts = [host.strip() for host in settings.TRUSTED_HOSTS.split(",") if host.strip()]
+# Always add Render and Vercel fallback hosts so API works in deployed environments
+render_fallbacks = ["*.onrender.com", "*.vercel.app", "*.vercel.com"]
+for fb in render_fallbacks:
+    if fb not in allowed_hosts:
+        allowed_hosts.append(fb)
 if allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 

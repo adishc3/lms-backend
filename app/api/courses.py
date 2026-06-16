@@ -31,9 +31,37 @@ from app.schemas.lesson_completion import LessonCompletionRead
 from app.core.email import send_email
 from app.core.cloudinary_storage import upload_lesson_file
 from app.core.ai import generate_course_structure
+import logging
+import httpx
+
 from app import models
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/courses", tags=["courses"])
+
+
+def send_course_completion_webhook(email: str, student_name: str, course_title: str, course_id: int):
+    """Send course completion notification to n8n webhook (connected to Gmail)."""
+    webhook_url = settings.N8N_COURSE_COMPLETION_WEBHOOK_URL
+    if not webhook_url:
+        return
+
+    payload = {
+        "email": email,
+        "student_name": student_name,
+        "course_title": course_title,
+        "course_id": course_id,
+    }
+
+    try:
+        with httpx.Client(timeout=10) as client:
+            response = client.post(webhook_url, json=payload)
+            response.raise_for_status()
+            logger.info("Course completion webhook sent successfully to %s for %s", webhook_url, email)
+    except Exception as exc:
+        logger.warning("Failed to send course completion webhook for %s: %s", email, exc)
 
 
 @router.get("/", response_model=list[CourseRead])
@@ -257,8 +285,9 @@ def read_lesson(course_id: int, lesson_id: int, current_user=Depends(get_current
 def complete_lesson(
     course_id: int,
     lesson_id: int,
-    time_spent_minutes: int | None = None,
+    background_tasks: BackgroundTasks,
     current_user=Depends(get_current_active_user),
+    time_spent_minutes: int | None = None,
     db: Session = Depends(get_db),
 ):
     course = get_course(db, course_id)
@@ -269,7 +298,15 @@ def complete_lesson(
         raise HTTPException(status_code=404, detail="Lesson not found")
     ensure_course_access(course, current_user, db)
     existing_completion = get_completion(db, current_user.id, lesson_id)
+
+    # Check if a certificate already exists before marking completion
+    from app.crud.certificate import get_certificate_by_user_course
+    cert_before = get_certificate_by_user_course(db, current_user.id, course_id)
+    logger.info("complete_lesson: user=%s course=%s lesson=%d existing_completion=%s cert_before=%s",
+                current_user.email, course.title, lesson_id, bool(existing_completion), bool(cert_before))
+
     completion = mark_completion(db, current_user.id, lesson_id, time_spent_minutes=time_spent_minutes)
+
     if not existing_completion:
         create_notification(
             db,
@@ -278,6 +315,22 @@ def complete_lesson(
             message=f"You completed '{lesson.title}' in '{course.title}'. Keep learning!",
         )
         create_admin_log(db, current_user.id, "complete_lesson", f"lesson_id={lesson_id}, lesson_title={lesson.title}, course_id={course_id}")
+
+    # Check if course was just completed by comparing certificate state before/after
+    cert_after = get_certificate_by_user_course(db, current_user.id, course_id)
+    was_just_completed = not cert_before and cert_after
+    logger.info("complete_lesson: cert_after=%s was_just_completed=%s", bool(cert_after), was_just_completed)
+
+    if was_just_completed:
+        logger.info("Course fully completed! Firing n8n webhook for %s in '%s'", current_user.email, course.title)
+        background_tasks.add_task(
+            send_course_completion_webhook,
+            email=current_user.email,
+            student_name=current_user.full_name or current_user.email,
+            course_title=course.title,
+            course_id=course_id,
+        )
+
     return completion
 
 
